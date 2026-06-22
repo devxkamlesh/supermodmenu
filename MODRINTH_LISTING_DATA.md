@@ -41,7 +41,7 @@ A focused, modern mod menu for Fabric with favorites, notes, an in-game mod brow
 ```markdown
 ![Super Mod Menu](https://raw.githubusercontent.com/devxkamlesh/supermodmenu/main/img/img_1.png)
 
-## Super Mod Menu
+**Download, manage, and update mods — all in-game.**
 
 A clean, modern replacement for the in-game mod list. Manage your installed mods,
 keep them up to date, and discover new ones — all from one polished screen.
@@ -67,7 +67,7 @@ keep them up to date, and discover new ones — all from one polished screen.
 
 ![Browse and install mods](https://raw.githubusercontent.com/devxkamlesh/supermodmenu/main/img/img_2.png)
 
-## How to use
+## Usage
 
 - Open it from the title screen (bottom-right) or the pause menu: **Mods**.
 - Left-click a mod to view details; right-click to add a note.
@@ -84,7 +84,7 @@ keep them up to date, and discover new ones — all from one polished screen.
 - Fabric API
 - Optional: Mod Menu (enables the per-mod config button)
 
-## Network use
+## Network
 
 Super Mod Menu connects to the internet to search for mods, download them, and
 check installed mods for updates. It does not collect or transmit personal data.

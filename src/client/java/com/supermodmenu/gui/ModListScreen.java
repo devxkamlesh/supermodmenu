@@ -42,10 +42,6 @@ public class ModListScreen extends Screen {
 
     private int sidebarW, headerH, footerH, listTop, rightX, rightW, actionTop;
 
-    // Translucent surfaces so the menu blur shows through (this screen only).
-    private static final int PANEL_T = 0xC0141420;
-    private static final int SCRIM   = 0x40000000;
-
     private final Screen parent;
 
     private TextFieldWidget searchBox;
@@ -341,15 +337,18 @@ public class ModListScreen extends Screen {
 
     // ── Render ─────────────────────────────────────────────────────────────--
     @Override
+    public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
+        // Suppress vanilla dirt/blur; we paint a solid background for crisp, readable text.
+    }
+
+    @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        // Vanilla menu blur (only on this screen). Panels below are translucent so
-        // the blurred world shows through, like Mod Menu. Get Mods stays opaque.
-        this.renderBackground(ctx, mouseX, mouseY, delta);
-        ctx.fill(0, 0, width, height, SCRIM);
-        ctx.fill(0, headerH, sidebarW, height - footerH, PANEL_T);
-        ctx.fill(0, height - footerH, width, height, PANEL_T);
+        // Solid, opaque surfaces — high contrast, no blurry/gray wash.
+        ctx.fill(0, 0, width, height, Theme.BG_APP);
+        ctx.fill(0, headerH, sidebarW, height - footerH, Theme.BG_PANEL);
+        ctx.fill(0, height - footerH, width, height, Theme.BG_PANEL);
         Theme.panel(ctx, rightX - 4, headerH + 4, rightW + 8, (actionTop - 8) - (headerH + 4),
-                PANEL_T, Theme.BORDER);
+                Theme.BG_PANEL, Theme.BORDER);
 
         // Keep the live update button label in sync while a download runs.
         if (updateBtn != null && updateBtn.visible) refreshUpdateButtonLabel();
@@ -409,7 +408,7 @@ public class ModListScreen extends Screen {
     }
 
     private void drawHeader(DrawContext ctx) {
-        ctx.fill(0, 0, width, headerH, PANEL_T);
+        ctx.fill(0, 0, width, headerH, Theme.BG_PANEL);
         Theme.divider(ctx, 0, headerH, width);
 
         ctx.drawTextWithShadow(textRenderer,
