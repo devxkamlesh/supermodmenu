@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "com.supermodmenu.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "refmap": "client-supermodmenu-refmap.json",
+  "client": [
+    "TitleScreenMixin",
+    "GameMenuScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
