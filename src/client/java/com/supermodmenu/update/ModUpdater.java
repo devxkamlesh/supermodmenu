@@ -55,6 +55,11 @@ public final class ModUpdater {
     private static final List<Swap> swaps = Collections.synchronizedList(new ArrayList<>());
     private static volatile boolean hookInstalled = false;
 
+    /** Set whenever a mod is installed or an update is staged, so the UI can prompt a restart. */
+    private static volatile boolean restartRequired = false;
+    public static void markRestartRequired() { restartRequired = true; }
+    public static boolean isRestartRequired() { return restartRequired; }
+
     private ModUpdater() {}
 
     public static State  state(String modId)   { return states.getOrDefault(modId, State.IDLE); }
@@ -128,6 +133,7 @@ public final class ModUpdater {
                 if (!isShellSafe(swap)) { err(id, "Unsafe path; update manually"); return; }
                 swaps.add(swap);
                 installHook();
+                markRestartRequired();
 
                 states.put(id, State.READY);
                 messages.put(id, "Update ready — restart to apply");

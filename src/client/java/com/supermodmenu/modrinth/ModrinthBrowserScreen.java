@@ -60,7 +60,7 @@ public class ModrinthBrowserScreen extends Screen {
     private ButtonWidget searchBtn, backBtn, loadMoreBtn;
 
     private final List<ModEntry> mods = new ArrayList<>();
-    private final Set<String> installedSlugs = new HashSet<>();
+    private final Set<String> installedSlugs = ConcurrentHashMap.newKeySet();
     private final Map<String, DlState> dlState = new ConcurrentHashMap<>();
 
     private float scroll = 0, targetScroll = 0;
@@ -284,6 +284,7 @@ public class ModrinthBrowserScreen extends Screen {
 
                 dlState.put(mod.projectId, DlState.DONE);
                 installedSlugs.add(mod.slug.toLowerCase());
+                com.supermodmenu.update.ModUpdater.markRestartRequired();
                 statusMessage = "✔ Installed " + mod.title + " — restart to load";
             } catch (Exception e) {
                 SuperModMenuClient.LOGGER.error("Install failed for {}", mod.slug, e);

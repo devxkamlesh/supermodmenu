@@ -52,7 +52,7 @@ public class ModListScreen extends Screen {
     private ModListWidget   list;
 
     private ButtonWidget favBtn, noteBtn, depsBtn, configBtn, modrinthBtn, updateBtn;
-    private ButtonWidget getModsBtn, updatesBtn, updatesBadge;
+    private ButtonWidget getModsBtn, updatesBtn, updatesBadge, restartBtn;
     private ButtonWidget linkWebBtn, linkSrcBtn, linkIssuesBtn;
     private String curHome, curSrc, curIssues;
     private int linkRowY;
@@ -86,7 +86,10 @@ public class ModListScreen extends Screen {
                 .collect(Collectors.toList());
         graph = DependencyGraph.build();
 
-        sidebarW = Math.max(232, Math.min(340, (int) (width * 0.34)));
+        // Responsive split: sidebar is ~36% but always leaves a usable detail pane,
+        // even at high GUI scale / small windows (effective width can be ~320).
+        int desiredSidebar = Math.max(180, Math.min(320, (int) (width * 0.36)));
+        sidebarW = Math.min(desiredSidebar, Math.max(140, width - 210));
         headerH  = 44;
         footerH  = 34;
         listTop  = headerH + 52;
@@ -147,19 +150,32 @@ public class ModListScreen extends Screen {
                 .dimensions(width - 130, 6, 120, 16).build();
         addDrawableChild(updatesBadge);
 
+        // Header: "Restart to apply" — shown after a mod is installed/updated this session.
+        restartBtn = ButtonWidget.builder(Text.literal("⟳ Restart to apply"), b -> promptRestart())
+                .dimensions(width - 154, 24, 144, 16).build();
+        restartBtn.visible = false;
+        addDrawableChild(restartBtn);
+
         // Detail header link buttons (Website / Source / Issues), Mod Menu style.
         linkRowY = headerH + Theme.PAD + 4 + 46 + 12;
         linkWebBtn    = linkButton("Website", () -> openUrl(curHome));
         linkSrcBtn    = linkButton("Source",  () -> openUrl(curSrc));
         linkIssuesBtn = linkButton("Issues",  () -> openUrl(curIssues));
 
-        // Footer
+        // Footer — responsive: 3 buttons share the space left of a right-pinned Done.
         int fy = height - footerH + 7;
-        getModsBtn = footer("⬇ Get Mods", Theme.PAD, fy, 96,
+        int doneW = 60;
+        int doneX = width - Theme.PAD - doneW;
+        int leftAvail = doneX - Theme.PAD - Theme.GAP;
+        int bw = Math.max(54, Math.min(108, (leftAvail - 2 * Theme.GAP) / 3));
+        int fx = Theme.PAD;
+        getModsBtn = footer("⬇ Get Mods", fx, fy, bw,
                 b -> client.setScreen(new ModrinthBrowserScreen(this)));
-        updatesBtn = footer("⟳ Check Updates", Theme.PAD + 96 + Theme.GAP, fy, 110, b -> checkUpdates());
-        footer("\uD83D\uDCC1 Open Folder", Theme.PAD + 96 + 110 + Theme.GAP * 2, fy, 96, b -> openModsFolder());
-        footer("Done", width - Theme.PAD - 70, fy, 70, b -> close());
+        fx += bw + Theme.GAP;
+        updatesBtn = footer("⟳ Updates", fx, fy, bw, b -> checkUpdates());
+        fx += bw + Theme.GAP;
+        footer("\uD83D\uDCC1 Folder", fx, fy, bw, b -> openModsFolder());
+        footer("Done", doneX, fy, doneW, b -> close());
 
         updateActionButtons();
         refreshFilter();
@@ -196,13 +212,16 @@ public class ModListScreen extends Screen {
             ButtonWidget b = btns[i];
             if (b == null) continue;
             boolean show = selected != null && urls[i] != null && !urls[i].isBlank();
-            b.visible = show;
             if (show) {
                 int w = textRenderer.getWidth(b.getMessage().getString()) + 14;
+                if (lx + w > rightX + rightW) { b.visible = false; continue; }  // would overflow
+                b.visible = true;
                 b.setX(lx);
                 b.setY(linkRowY);
                 b.setWidth(w);
                 lx += w + Theme.GAP;
+            } else {
+                b.visible = false;
             }
         }
     }
@@ -344,8 +363,16 @@ public class ModListScreen extends Screen {
             updatesBadge.setMessage(Text.literal("⬆ " + updateCount + " update"
                     + (updateCount == 1 ? "" : "s")));
         }
+        if (restartBtn != null) {
+            restartBtn.visible = ModUpdater.isRestartRequired();
+        }
 
         drawHeader(ctx);
+
+        if (restartBtn != null && restartBtn.visible)
+            ctx.fill(restartBtn.getX(), restartBtn.getY(),
+                    restartBtn.getX() + restartBtn.getWidth(),
+                    restartBtn.getY() + restartBtn.getHeight(), Theme.GREEN_DIM);
 
         if (getModsBtn != null)
             ctx.fill(getModsBtn.getX(), getModsBtn.getY(),
@@ -572,6 +599,18 @@ public class ModListScreen extends Screen {
         }
     }
 
+    private void promptRestart() {
+        client.setScreen(new net.minecraft.client.gui.screen.ConfirmScreen(
+                confirmed -> {
+                    if (confirmed) client.scheduleStop();   // clean shutdown; relaunch applies new mods
+                    else client.setScreen(this);
+                },
+                Text.literal("Restart Minecraft?").formatted(Formatting.BOLD),
+                Text.literal("Mods were installed or updated. Quit now so they load on next launch?"),
+                Text.literal("Quit Now"),
+                Text.literal("Later")));
+    }
+
     private void openModsFolder() {
         try {
             java.nio.file.Path modsDir = FabricLoader.getInstance().getGameDir().resolve("mods");
@@ -588,7 +627,7 @@ public class ModListScreen extends Screen {
         updatesBtn.active = false;
         String mc = SharedConstants.getGameVersion().getName();
         ModrinthUpdateChecker.checkAllAsync(mc).thenRun(() -> client.execute(() -> {
-            updatesBtn.setMessage(Text.literal("⟳ Check Updates"));
+            updatesBtn.setMessage(Text.literal("⟳ Updates"));
             updatesBtn.active = true;
             refreshFilter();
         }));

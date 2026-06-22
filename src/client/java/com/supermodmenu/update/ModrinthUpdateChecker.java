@@ -88,7 +88,11 @@ public class ModrinthUpdateChecker {
         for (ModContainer mod : FabricLoader.getInstance().getAllMods()) {
             String modId = mod.getMetadata().getId();
 
-            // Skip virtual/builtin mods (no real JAR)
+            // Only PATH-origin mods have a real JAR on disk. NESTED (jar-in-jar) origins
+            // throw UnsupportedOperationException from getPaths(), and builtins have none.
+            if (mod.getOrigin().getKind() != net.fabricmc.loader.api.metadata.ModOrigin.Kind.PATH) {
+                continue;
+            }
             List<Path> paths = mod.getOrigin().getPaths();
             if (paths.isEmpty()) continue;
 
