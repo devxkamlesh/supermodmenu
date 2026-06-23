@@ -25,7 +25,6 @@ public class SuperModMenuClient implements ClientModInitializer {
     public void onInitializeClient() {
         LOGGER.info("Super Mod Menu initializing...");
         ModDataManager.init();
-        com.supermodmenu.update.ModUpdater.cleanupStaging();
         LOGGER.info("Super Mod Menu ready.");
     }
 }

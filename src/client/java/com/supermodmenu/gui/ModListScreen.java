@@ -5,7 +5,6 @@ import com.supermodmenu.data.ModDataManager;
 import com.supermodmenu.icon.ModIconCache;
 import com.supermodmenu.modrinth.ModrinthBrowserScreen;
 import com.supermodmenu.modrinth.ModrinthDescriptionCache;
-import com.supermodmenu.update.ModUpdater;
 import com.supermodmenu.update.ModrinthUpdateChecker;
 import com.supermodmenu.dependency.DependencyGraph;
 import net.fabricmc.loader.api.FabricLoader;
@@ -326,13 +325,9 @@ public class ModListScreen extends Screen {
 
     private void refreshUpdateButtonLabel() {
         if (updateBtn == null || selected == null) return;
-        String id = selected.getMetadata().getId();
-        switch (ModUpdater.state(id)) {
-            case DOWNLOADING -> { updateBtn.setMessage(Text.literal("Downloading…")); updateBtn.active = false; }
-            case READY       -> { updateBtn.setMessage(Text.literal("✔ Restart to apply")); updateBtn.active = false; }
-            case ERROR       -> { updateBtn.setMessage(Text.literal("⚠ Retry update")); updateBtn.active = true; }
-            default          -> { updateBtn.setMessage(Text.literal("⬆ Update")); updateBtn.active = true; }
-        }
+        // The update button now opens the Modrinth page for the new version.
+        updateBtn.setMessage(Text.literal("⬆ Update on Modrinth"));
+        updateBtn.active = true;
     }
 
     // ── Render ─────────────────────────────────────────────────────────────--
@@ -363,7 +358,7 @@ public class ModListScreen extends Screen {
                     + (updateCount == 1 ? "" : "s")));
         }
         if (restartBtn != null) {
-            restartBtn.visible = ModUpdater.isRestartRequired();
+            restartBtn.visible = ModrinthBrowserScreen.newModsInstalled;
         }
 
         drawHeader(ctx);
@@ -577,11 +572,10 @@ public class ModListScreen extends Screen {
 
     private void installUpdate() {
         if (selected == null) return;
-        var result = ModrinthUpdateChecker.getResult(selected.getMetadata().getId());
-        if (result.projectId() == null) return;
-        ModUpdater.update(selected, result.projectId(),
-                SharedConstants.getGameVersion().getName());
-        refreshUpdateButtonLabel();
+        // Open the mod's Modrinth page so the user can download the update manually.
+        // Auto-download was removed because CurseForge (and Modrinth) don't allow
+        // mods that spawn external processes to swap jar files.
+        openModrinth();
     }
 
     private void openModrinth() {
