@@ -68,6 +68,9 @@ public class ModrinthBrowserScreen extends Screen {
     private volatile int currentOffset = 0;
     private volatile String lastQuery = null, statusMessage = null;
 
+    /** Session-wide flag: true if any mod was installed this session (signals the restart prompt). */
+    public static volatile boolean newModsInstalled = false;
+
     public ModrinthBrowserScreen(Screen parent) {
         super(Text.literal("Get Mods"));
         this.parent = parent;
@@ -284,7 +287,7 @@ public class ModrinthBrowserScreen extends Screen {
 
                 dlState.put(mod.projectId, DlState.DONE);
                 installedSlugs.add(mod.slug.toLowerCase());
-                com.supermodmenu.update.ModUpdater.markRestartRequired();
+                newModsInstalled = true;
                 statusMessage = "✔ Installed " + mod.title + " — restart to load";
             } catch (Exception e) {
                 SuperModMenuClient.LOGGER.error("Install failed for {}", mod.slug, e);
