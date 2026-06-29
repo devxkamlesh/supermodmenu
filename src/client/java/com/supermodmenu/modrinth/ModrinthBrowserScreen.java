@@ -11,7 +11,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
@@ -253,7 +253,7 @@ public class ModrinthBrowserScreen extends Screen {
 
         CompletableFuture.runAsync(() -> {
             try {
-                String mcVer = SharedConstants.getGameVersion().getName();
+                String mcVer = SharedConstants.getGameVersion().name();
                 // 1) Resolve a Fabric version compatible with this game version.
                 String url = API + "/project/" + mod.projectId + "/version?loaders="
                         + URLEncoder.encode("[\"fabric\"]", StandardCharsets.UTF_8)
@@ -398,7 +398,7 @@ public class ModrinthBrowserScreen extends Screen {
         int iconX = x + 8, iconY = y + (CARD_H - ICON) / 2;
         Identifier id = mod.iconUrl != null ? ModrinthIconCache.getIcon(mod.projectId, mod.iconUrl) : null;
         if (id != null) {
-            ctx.drawTexture(RenderLayer::getGuiTextured, id, iconX, iconY, 0, 0, ICON, ICON, ICON, ICON);
+            ctx.drawTexture(RenderPipelines.GUI_TEXTURED, id, iconX, iconY, 0, 0, ICON, ICON, ICON, ICON);
         } else {
             ctx.fill(iconX, iconY, iconX + ICON, iconY + ICON, Theme.BG_ELEVATED);
             ctx.drawBorder(iconX, iconY, ICON, ICON, Theme.BORDER_LIGHT);

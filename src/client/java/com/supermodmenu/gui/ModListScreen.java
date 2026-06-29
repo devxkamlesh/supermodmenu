@@ -16,7 +16,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -432,7 +432,7 @@ public class ModListScreen extends Screen {
         int iconSz = 46;
         Identifier icon = ModIconCache.getIcon(meta.getId());
         if (icon != null) {
-            ctx.drawTexture(RenderLayer::getGuiTextured, icon, x, y, 0, 0,
+            ctx.drawTexture(RenderPipelines.GUI_TEXTURED, icon, x, y, 0, 0,
                     iconSz, iconSz, iconSz, iconSz);
         } else {
             Theme.panel(ctx, x, y, iconSz, iconSz, Theme.BG_ELEVATED, Theme.BORDER_LIGHT);
@@ -618,7 +618,7 @@ public class ModListScreen extends Screen {
         if (ModrinthUpdateChecker.isChecking()) return;
         updatesBtn.setMessage(Text.literal("Checking…"));
         updatesBtn.active = false;
-        String mc = SharedConstants.getGameVersion().getName();
+        String mc = SharedConstants.getGameVersion().name();
         ModrinthUpdateChecker.checkAllAsync(mc).thenRun(() -> client.execute(() -> {
             updatesBtn.setMessage(Text.literal("⟳ Updates"));
             updatesBtn.active = true;

@@ -7,7 +7,7 @@ import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.widget.AlwaysSelectedEntryListWidget;
-import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
@@ -94,7 +94,7 @@ public class ModListWidget extends AlwaysSelectedEntryListWidget<ModListWidget.M
             int iconX = cx + 6, iconY = cy + 4;
             Identifier icon = ModIconCache.getIcon(id);
             if (icon != null) {
-                ctx.drawTexture(RenderLayer::getGuiTextured, icon,
+                ctx.drawTexture(RenderPipelines.GUI_TEXTURED, icon,
                         iconX, iconY, 0, 0, iconSize, iconSize, iconSize, iconSize);
             } else {
                 ctx.fill(iconX, iconY, iconX + iconSize, iconY + iconSize, Theme.BG_ELEVATED);
