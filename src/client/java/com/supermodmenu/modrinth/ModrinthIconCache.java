@@ -1,10 +1,10 @@
 package com.supermodmenu.modrinth;
 
 import com.supermodmenu.SuperModMenuClient;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.texture.NativeImage;
-import net.minecraft.client.texture.NativeImageBackedTexture;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.Minecraft;
+import com.mojang.blaze3d.platform.NativeImage;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.resources.Identifier;
 
 import java.io.InputStream;
 import java.net.URI;
@@ -79,15 +79,15 @@ public class ModrinthIconCache {
                 }
 
                 // Texture registration MUST happen on the render thread
-                MinecraftClient.getInstance().execute(() -> {
+                Minecraft.getInstance().execute(() -> {
                     try {
-                        Identifier id = Identifier.of("supermodmenu",
+                        Identifier id = Identifier.fromNamespaceAndPath("supermodmenu",
                                 "modrinth_icon/" + projectId.toLowerCase());
-                        NativeImageBackedTexture texture =
+                        DynamicTexture texture =
                                 com.supermodmenu.icon.TextureCompat.create(image);
-                        MinecraftClient.getInstance()
+                        Minecraft.getInstance()
                                 .getTextureManager()
-                                .registerTexture(id, texture);
+                                .register(id, texture);
                         cache.put(projectId, id);
                     } catch (Throwable e) {
                         SuperModMenuClient.LOGGER.debug(
@@ -127,10 +127,10 @@ public class ModrinthIconCache {
 
     /** Unregisters all cached textures and clears state. Call when closing the screen. */
     public static void clearCache() {
-        MinecraftClient mc = MinecraftClient.getInstance();
+        Minecraft mc = Minecraft.getInstance();
         if (mc != null) {
             cache.forEach((id, identifier) ->
-                    mc.execute(() -> mc.getTextureManager().destroyTexture(identifier)));
+                    mc.execute(() -> mc.getTextureManager().release(identifier)));
         }
         cache.clear();
         pending.clear();

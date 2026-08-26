@@ -4,10 +4,9 @@ import com.supermodmenu.SuperModMenuClient;
 import com.supermodmenu.update.ModrinthUpdateChecker;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.texture.NativeImage;
-import net.minecraft.client.texture.NativeImageBackedTexture;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.Minecraft;
+import com.mojang.blaze3d.platform.NativeImage;
+import net.minecraft.resources.Identifier;
 
 import java.io.InputStream;
 import java.net.URI;
@@ -115,11 +114,11 @@ public class ModIconCache {
             try (InputStream is = Files.newInputStream(pathOpt.get())) {
                 image = NativeImage.read(is);
             }
-            Identifier id = Identifier.of("supermodmenu", "icons/" + modId.replace(":", "_"));
-            MinecraftClient.getInstance().execute(() -> {
+            Identifier id = Identifier.fromNamespaceAndPath("supermodmenu", "icons/" + modId.replace(":", "_"));
+            Minecraft.getInstance().execute(() -> {
                 try {
-                    MinecraftClient.getInstance().getTextureManager()
-                            .registerTexture(id, TextureCompat.create(image));
+                        Minecraft.getInstance().getTextureManager()
+                            .register(id, TextureCompat.create(image));
                 } catch (Throwable t) {
                     SuperModMenuClient.LOGGER.debug("Icon texture failed for {}: {}", modId, t.toString());
                     image.close();
@@ -183,11 +182,11 @@ public class ModIconCache {
             // Step 4: load as NativeImage (off-thread), register on the render thread
             try (InputStream is = imgResp.body()) {
                 final NativeImage image = NativeImage.read(is);
-                Identifier id = Identifier.of("supermodmenu", "icons/" + modId.replace(":", "_") + "_mr");
-                MinecraftClient.getInstance().execute(() -> {
+                Identifier id = Identifier.fromNamespaceAndPath("supermodmenu", "icons/" + modId.replace(":", "_") + "_mr");
+                Minecraft.getInstance().execute(() -> {
                     try {
-                        MinecraftClient.getInstance().getTextureManager()
-                                .registerTexture(id, TextureCompat.create(image));
+                        Minecraft.getInstance().getTextureManager()
+                            .register(id, TextureCompat.create(image));
                     } catch (Throwable t) {
                         image.close();
                     }

@@ -1,10 +1,11 @@
 package com.supermodmenu.gui;
 
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 
 /**
  * Shown when a mod has no registered configuration screen.
@@ -12,32 +13,28 @@ import net.minecraft.util.Formatting;
  */
 public class NoConfigScreen extends Screen {
 
-    private static final int BG_PANEL  = 0xF01A1A24;
-    private static final int BORDER    = 0xFF2E2E40;
-    private static final int COLOR_DIM = 0x88000000;
-
     private final Screen parent;
     private final String modName;
 
     public NoConfigScreen(Screen parent, String modName) {
-        super(Text.literal("No Configuration Available"));
+        super(Component.literal("No Configuration Available"));
         this.parent  = parent;
         this.modName = modName;
     }
 
     @Override
     protected void init() {
-        addDrawableChild(ButtonWidget.builder(
-                Text.literal("OK"),
-                btn -> client.setScreen(parent))
-                .dimensions(width / 2 - 60, height / 2 + 20, 120, 24)
+        addRenderableWidget(Button.builder(
+            Component.literal("OK"),
+            btn -> minecraft.gui.setScreen(parent))
+            .bounds(width / 2 - 60, height / 2 + 20, 120, 24)
                 .build());
     }
 
     @Override
-    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+    public void extractRenderState(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta) {
         // Dim the world/previous screen behind the dialog
-        ctx.fill(0, 0, width, height, COLOR_DIM);
+        ctx.fill(0, 0, width, height, Theme.BG_SCRIM);
 
         int panelW = 320;
         int panelH = 110;
@@ -45,33 +42,32 @@ public class NoConfigScreen extends Screen {
         int panelY = (height - panelH) / 2;
 
         // Panel background + border
-        ctx.fill(panelX, panelY, panelX + panelW, panelY + panelH, BG_PANEL);
-        ctx.drawBorder(panelX, panelY, panelW, panelH, BORDER);
+        Theme.accentedPanel(ctx, panelX, panelY, panelW, panelH, Theme.BLUE);
 
         // Title
-        ctx.drawCenteredTextWithShadow(textRenderer,
-                Text.literal("No Configuration Available").formatted(Formatting.YELLOW),
-                width / 2, panelY + 18, 0xFFFFFFFF);
+        ctx.centeredText(font,
+            Component.literal("NO CONFIGURATION AVAILABLE").withStyle(ChatFormatting.BOLD),
+                width / 2, panelY + 18, Theme.BLUE);
 
         // Body
-        ctx.drawCenteredTextWithShadow(textRenderer,
-                Text.literal(modName + " does not have a configuration screen."),
-                width / 2, panelY + 42, 0xFFAAAAAA);
+        ctx.centeredText(font,
+            Component.literal(modName + " does not have a configuration screen."),
+                width / 2, panelY + 42, Theme.TEXT_MUTED);
 
-        super.render(ctx, mouseX, mouseY, delta);
+        super.extractRenderState(ctx, mouseX, mouseY, delta);
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == 256) { // ESC
-            client.setScreen(parent);
+    public boolean keyPressed(KeyEvent event) {
+        if (event.key() == 256) { // ESC
+            minecraft.gui.setScreen(parent);
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(event);
     }
 
     @Override
-    public boolean shouldPause() {
+    public boolean isPauseScreen() {
         return false;
     }
 }

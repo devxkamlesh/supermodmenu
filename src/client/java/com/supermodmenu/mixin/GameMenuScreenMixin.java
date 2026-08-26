@@ -2,9 +2,10 @@ package com.supermodmenu.mixin;
 
 import com.supermodmenu.gui.ModListScreen;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.gui.screen.GameMenuScreen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.screens.PauseScreen;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -14,11 +15,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * Injects a "Mods" button into the in-game pause menu.
  * Uses the Screen#init method which is always present.
  */
-@Mixin(GameMenuScreen.class)
-public abstract class GameMenuScreenMixin extends net.minecraft.client.gui.screen.Screen {
+@Mixin(PauseScreen.class)
+public abstract class GameMenuScreenMixin extends Screen {
 
     protected GameMenuScreenMixin() {
-        super(Text.empty());
+        super(Component.empty());
     }
 
     @Inject(method = "init", at = @At("TAIL"))
@@ -38,10 +39,10 @@ public abstract class GameMenuScreenMixin extends net.minecraft.client.gui.scree
         int btnX = this.width / 2 - btnW / 2;
         int btnY = this.height / 4 + 168;
 
-        this.addDrawableChild(ButtonWidget.builder(
-                Text.literal("✦ Mods (" + modCount + ")"),
-                btn -> this.client.setScreen(new ModListScreen(this)))
-                .dimensions(btnX, btnY, btnW, btnH)
+        this.addRenderableWidget(Button.builder(
+            Component.literal("✦ Mods (" + modCount + ")"),
+            btn -> this.minecraft.gui.setScreen(new ModListScreen(this)))
+            .bounds(btnX, btnY, btnW, btnH)
                 .build());
     }
 }

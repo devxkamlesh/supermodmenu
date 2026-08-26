@@ -12,15 +12,16 @@ import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.api.metadata.ModOrigin;
 import net.fabricmc.loader.api.metadata.ModEnvironment;
 import net.minecraft.SharedConstants;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.text.OrderedText;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
+import net.minecraft.resources.Identifier;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -43,15 +44,15 @@ public class ModListScreen extends Screen {
 
     private final Screen parent;
 
-    private TextFieldWidget searchBox;
+    private EditBox searchBox;
     private ModListWidget   list;
 
-    private ButtonWidget favBtn, noteBtn, depsBtn, configBtn, modrinthBtn, updateBtn;
-    private ButtonWidget getModsBtn, updatesBtn, updatesBadge, restartBtn;
-    private ButtonWidget linkWebBtn, linkSrcBtn, linkIssuesBtn;
+    private Button favBtn, noteBtn, depsBtn, configBtn, modrinthBtn, updateBtn;
+    private Button getModsBtn, updatesBtn, updatesBadge, restartBtn;
+    private Button linkWebBtn, linkSrcBtn, linkIssuesBtn;
     private String curHome, curSrc, curIssues;
     private int linkRowY;
-    private final List<ButtonWidget> filterTabs = new ArrayList<>();
+    private final List<Button> filterTabs = new ArrayList<>();
 
     private DependencyGraph graph;
     private int gridColW, gridC2, gridR2, gridGap;   // geometry reused to reflow the action grid
@@ -69,7 +70,7 @@ public class ModListScreen extends Screen {
     }
 
     public ModListScreen(Screen parent) {
-        super(Text.literal("Super Mod Menu"));
+        super(Component.literal("Mod Menu Pro"));
         this.parent = parent;
     }
 
@@ -85,9 +86,9 @@ public class ModListScreen extends Screen {
         // even at high GUI scale / small windows (effective width can be ~320).
         int desiredSidebar = Math.max(180, Math.min(320, (int) (width * 0.36)));
         sidebarW = Math.min(desiredSidebar, Math.max(140, width - 210));
-        headerH  = 44;
-        footerH  = 34;
-        listTop  = headerH + 52;
+        headerH  = 48;
+        footerH  = 38;
+        listTop  = headerH + 56;
 
         rightX = sidebarW + Theme.PAD;
         rightW = width - rightX - Theme.PAD;
@@ -97,32 +98,32 @@ public class ModListScreen extends Screen {
         actionTop = height - footerH - gridH - Theme.PAD;
 
         // Search
-        searchBox = new TextFieldWidget(textRenderer,
-                Theme.PAD, headerH + 8, sidebarW - 2 * Theme.PAD, 18, Text.literal("Search"));
-        searchBox.setPlaceholder(Text.literal("Search mods…").formatted(Formatting.DARK_GRAY));
-        searchBox.setChangedListener(s -> refreshFilter());
-        addDrawableChild(searchBox);
+        searchBox = new EditBox(font,
+            Theme.PAD, headerH + 10, sidebarW - 2 * Theme.PAD, 20, Component.literal("Search"));
+        searchBox.setHint(Component.literal("Search mods…").withStyle(ChatFormatting.DARK_GRAY));
+        searchBox.setResponder(s -> refreshFilter());
+        addRenderableWidget(searchBox);
 
         // Filter segmented control
-        int tabsY = headerH + 30, tabGap = 4;
+        int tabsY = headerH + 34, tabGap = 4;
         int tabW = (sidebarW - 2 * Theme.PAD - tabGap * (FilterMode.values().length - 1))
                 / FilterMode.values().length;
         int tabX = Theme.PAD;
         filterTabs.clear();
         for (FilterMode mode : FilterMode.values()) {
             FilterMode m = mode;
-            ButtonWidget tab = ButtonWidget.builder(Text.literal(mode.label),
+            Button tab = Button.builder(Component.literal(mode.label),
                             b -> { filter = m; refreshFilter(); })
-                    .dimensions(tabX, tabsY, tabW, 16).build();
-            addDrawableChild(tab);
+                        .bounds(tabX, tabsY, tabW, 16).build();
+                    addRenderableWidget(tab);
             filterTabs.add(tab);
             tabX += tabW + tabGap;
         }
 
         // Mod list
         int listH = (height - footerH) - listTop;
-        list = new ModListWidget(client, sidebarW, listH, listTop, 36, this);
-        addDrawableChild(list);
+        list = new ModListWidget(minecraft, sidebarW, listH, listTop, 36, this);
+        addRenderableWidget(list);
 
         // Detail action grid (2 cols × 3 rows)
         int colW = (rightW - gap) / 2;
@@ -140,16 +141,16 @@ public class ModListScreen extends Screen {
         modrinthBtn = action("↗ Open on Modrinth", c1, r2, rightW, this::openModrinth);
 
         // Header: clickable "N updates" badge (jumps to the Updates filter)
-        updatesBadge = ButtonWidget.builder(Text.literal("⬆ updates"),
+        updatesBadge = Button.builder(Component.literal("⬆ updates"),
                         b -> { filter = FilterMode.HAS_UPDATE; refreshFilter(); })
-                .dimensions(width - 130, 6, 120, 16).build();
-        addDrawableChild(updatesBadge);
+                .bounds(width - 130, 6, 120, 16).build();
+            addRenderableWidget(updatesBadge);
 
         // Header: "Restart to apply" — shown after a mod is installed/updated this session.
-        restartBtn = ButtonWidget.builder(Text.literal("⟳ Restart to apply"), b -> promptRestart())
-                .dimensions(width - 154, 24, 144, 16).build();
+        restartBtn = Button.builder(Component.literal("⟳ Restart to apply"), b -> promptRestart())
+            .bounds(width - 154, 24, 144, 16).build();
         restartBtn.visible = false;
-        addDrawableChild(restartBtn);
+        addRenderableWidget(restartBtn);
 
         // Detail header link buttons (Website / Source / Issues), Mod Menu style.
         linkRowY = headerH + Theme.PAD + 4 + 46 + 12;
@@ -165,34 +166,34 @@ public class ModListScreen extends Screen {
         int bw = Math.max(54, Math.min(108, (leftAvail - 2 * Theme.GAP) / 3));
         int fx = Theme.PAD;
         getModsBtn = footer("⬇ Get Mods", fx, fy, bw,
-                b -> client.setScreen(new ModrinthBrowserScreen(this)));
+                b -> minecraft.gui.setScreen(new ModrinthBrowserScreen(this)));
         fx += bw + Theme.GAP;
         updatesBtn = footer("⟳ Updates", fx, fy, bw, b -> checkUpdates());
         fx += bw + Theme.GAP;
         footer("\uD83D\uDCC1 Folder", fx, fy, bw, b -> openModsFolder());
-        footer("Done", doneX, fy, doneW, b -> close());
+        footer("Done", doneX, fy, doneW, b -> onClose());
 
         updateActionButtons();
         refreshFilter();
     }
 
-    private ButtonWidget action(String label, int x, int y, int w, Runnable onClick) {
-        ButtonWidget b = ButtonWidget.builder(Text.literal(label), btn -> onClick.run())
-                .dimensions(x, y, w, Theme.BTN_H).build();
-        return addDrawableChild(b);
+    private Button action(String label, int x, int y, int w, Runnable onClick) {
+        Button b = Button.builder(Component.literal(label), btn -> onClick.run())
+                .bounds(x, y, w, Theme.BTN_H).build();
+        return addRenderableWidget(b);
     }
 
-    private ButtonWidget linkButton(String label, Runnable onClick) {
-        ButtonWidget b = ButtonWidget.builder(Text.literal(label), btn -> onClick.run())
-                .dimensions(rightX, linkRowY, 60, 16).build();
+    private Button linkButton(String label, Runnable onClick) {
+        Button b = Button.builder(Component.literal(label), btn -> onClick.run())
+                .bounds(rightX, linkRowY, 60, 16).build();
         b.visible = false;
-        return addDrawableChild(b);
+        return addRenderableWidget(b);
     }
 
     private void openUrl(String url) {
         if (url == null || url.isBlank()) return;
         try {
-            net.minecraft.util.Util.getOperatingSystem().open(java.net.URI.create(url));
+            net.minecraft.util.Util.getPlatform().openUri(java.net.URI.create(url));
         } catch (Exception e) {
             SuperModMenuClient.LOGGER.error("Failed to open URL {}", url, e);
         }
@@ -201,14 +202,14 @@ public class ModListScreen extends Screen {
     /** Position the visible Website/Source/Issues buttons in a left-to-right row. */
     private void layoutLinks() {
         int lx = rightX;
-        ButtonWidget[] btns = {linkWebBtn, linkSrcBtn, linkIssuesBtn};
+        Button[] btns = {linkWebBtn, linkSrcBtn, linkIssuesBtn};
         String[] urls = {curHome, curSrc, curIssues};
         for (int i = 0; i < btns.length; i++) {
-            ButtonWidget b = btns[i];
+            Button b = btns[i];
             if (b == null) continue;
             boolean show = selected != null && urls[i] != null && !urls[i].isBlank();
             if (show) {
-                int w = textRenderer.getWidth(b.getMessage().getString()) + 14;
+                int w = font.width(b.getMessage().getString()) + 14;
                 if (lx + w > rightX + rightW) { b.visible = false; continue; }  // would overflow
                 b.visible = true;
                 b.setX(lx);
@@ -221,9 +222,9 @@ public class ModListScreen extends Screen {
         }
     }
 
-    private ButtonWidget footer(String label, int x, int y, int w, ButtonWidget.PressAction onClick) {
-        return addDrawableChild(ButtonWidget.builder(Text.literal(label), onClick)
-                .dimensions(x, y, w, 20).build());
+    private Button footer(String label, int x, int y, int w, Button.OnPress onClick) {
+        return addRenderableWidget(Button.builder(Component.literal(label), onClick)
+                .bounds(x, y, w, 20).build());
     }
 
     // ── Library detection ────────────────────────────────────────────────────
@@ -245,7 +246,7 @@ public class ModListScreen extends Screen {
 
     // ── Filtering ──────────────────────────────────────────────────────────--
     public void refreshFilter() {
-        String q = searchBox == null ? "" : searchBox.getText().toLowerCase(Locale.ROOT).trim();
+        String q = searchBox == null ? "" : searchBox.getValue().toLowerCase(Locale.ROOT).trim();
 
         filteredMods = allMods.stream()
                 .filter(m -> {
@@ -280,9 +281,9 @@ public class ModListScreen extends Screen {
 
     private void updateActionButtons() {
         boolean has = selected != null;
-        ButtonWidget[] all = {favBtn, noteBtn, depsBtn, configBtn, modrinthBtn, updateBtn};
+        Button[] all = {favBtn, noteBtn, depsBtn, configBtn, modrinthBtn, updateBtn};
         if (!has) {
-            for (ButtonWidget b : all) if (b != null) b.visible = false;
+            for (Button b : all) if (b != null) b.visible = false;
             curHome = curSrc = curIssues = null;
             layoutLinks();
             return;
@@ -298,13 +299,13 @@ public class ModListScreen extends Screen {
                 == ModrinthUpdateChecker.Status.UPDATE_AVAILABLE;
         boolean hasConfig = hasConfigScreen(selected);
 
-        favBtn.setMessage(Text.literal(
+        favBtn.setMessage(Component.literal(
                 ModDataManager.isFavorite(id) ? "★ Unfavorite" : "☆ Favorite"));
         if (hasUpdate) refreshUpdateButtonLabel();
 
         // Build the ordered list of buttons that are actually shown, then flow them
         // into a 2-column grid (so the common case is a tidy 2×2).
-        List<ButtonWidget> vis = new ArrayList<>();
+        List<Button> vis = new ArrayList<>();
         vis.add(favBtn);
         vis.add(noteBtn);
         if (hasUpdate) vis.add(updateBtn);
@@ -312,9 +313,9 @@ public class ModListScreen extends Screen {
         if (hasConfig) vis.add(configBtn);
         vis.add(modrinthBtn);
 
-        for (ButtonWidget b : all) if (b != null) b.visible = false;
+        for (Button b : all) if (b != null) b.visible = false;
         for (int i = 0; i < vis.size(); i++) {
-            ButtonWidget b = vis.get(i);
+            Button b = vis.get(i);
             int col = i % 2, row = i / 2;
             b.setX(col == 0 ? rightX : gridC2);
             b.setY(actionTop + row * (Theme.BTN_H + gridGap));
@@ -326,24 +327,30 @@ public class ModListScreen extends Screen {
     private void refreshUpdateButtonLabel() {
         if (updateBtn == null || selected == null) return;
         // The update button now opens the Modrinth page for the new version.
-        updateBtn.setMessage(Text.literal("⬆ Update on Modrinth"));
+        updateBtn.setMessage(Component.literal("⬆ Update on Modrinth"));
         updateBtn.active = true;
     }
 
     // ── Render ─────────────────────────────────────────────────────────────--
     @Override
-    public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
+    public void extractBackground(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta) {
         // Suppress vanilla dirt/blur; we paint a solid background for crisp, readable text.
     }
 
     @Override
-    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+    public void extractRenderState(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta) {
         // Solid, opaque surfaces — high contrast, no blurry/gray wash.
         ctx.fill(0, 0, width, height, Theme.BG_APP);
-        ctx.fill(0, headerH, sidebarW, height - footerH, Theme.BG_PANEL);
+        ctx.fill(0, headerH, sidebarW, height - footerH, Theme.BG_SIDEBAR);
+        ctx.fill(sidebarW, headerH, sidebarW + 1, height - footerH, Theme.BORDER);
         ctx.fill(0, height - footerH, width, height, Theme.BG_PANEL);
-        Theme.panel(ctx, rightX - 4, headerH + 4, rightW + 8, (actionTop - 8) - (headerH + 4),
-                Theme.BG_PANEL, Theme.BORDER);
+        Theme.panel(ctx, rightX - 4, headerH + 8, rightW + 8, (actionTop - 12) - (headerH + 8),
+            Theme.BG_PANEL, Theme.BORDER);
+        if (selected != null) {
+            Theme.panel(ctx, rightX - 4, actionTop - 5, rightW + 8,
+                height - footerH - actionTop, Theme.BG_PANEL, Theme.BORDER);
+            Theme.sectionLabel(ctx, font, "Actions", rightX, actionTop - 17, Theme.TEXT_DIM);
+        }
 
         // Keep the live update button label in sync while a download runs.
         if (updateBtn != null && updateBtn.visible) refreshUpdateButtonLabel();
@@ -354,7 +361,7 @@ public class ModListScreen extends Screen {
                         == ModrinthUpdateChecker.Status.UPDATE_AVAILABLE).count();
         if (updatesBadge != null) {
             updatesBadge.visible = updateCount > 0;
-            updatesBadge.setMessage(Text.literal("⬆ " + updateCount + " update"
+            updatesBadge.setMessage(Component.literal("⬆ " + updateCount + " update"
                     + (updateCount == 1 ? "" : "s")));
         }
         if (restartBtn != null) {
@@ -364,26 +371,26 @@ public class ModListScreen extends Screen {
         drawHeader(ctx);
 
         if (restartBtn != null && restartBtn.visible)
-            ctx.fill(restartBtn.getX(), restartBtn.getY(),
+                ctx.fill(restartBtn.getX() - 1, restartBtn.getY() - 1,
                     restartBtn.getX() + restartBtn.getWidth(),
-                    restartBtn.getY() + restartBtn.getHeight(), Theme.GREEN_DIM);
+                    restartBtn.getY() + restartBtn.getHeight(), Theme.ACCENT_DIM);
 
         if (getModsBtn != null)
-            ctx.fill(getModsBtn.getX(), getModsBtn.getY(),
+                ctx.fill(getModsBtn.getX() - 1, getModsBtn.getY() - 1,
                     getModsBtn.getX() + getModsBtn.getWidth(),
-                    getModsBtn.getY() + getModsBtn.getHeight(), Theme.GREEN_DIM);
+                    getModsBtn.getY() + getModsBtn.getHeight(), Theme.ACCENT_DIM);
         if (updatesBtn != null)
             ctx.fill(updatesBtn.getX(), updatesBtn.getY(),
                     updatesBtn.getX() + updatesBtn.getWidth(),
                     updatesBtn.getY() + updatesBtn.getHeight(), Theme.BLUE_DIM);
 
-        super.render(ctx, mouseX, mouseY, delta);
+        super.extractRenderState(ctx, mouseX, mouseY, delta);
 
         // Active filter tab underline
         FilterMode[] vals = FilterMode.values();
         for (int i = 0; i < filterTabs.size(); i++) {
             if (vals[i] != filter) continue;
-            ButtonWidget t = filterTabs.get(i);
+            Button t = filterTabs.get(i);
             ctx.fill(t.getX(), t.getY() + t.getHeight(),
                     t.getX() + t.getWidth(), t.getY() + t.getHeight() + 2, Theme.ACCENT);
         }
@@ -391,79 +398,93 @@ public class ModListScreen extends Screen {
         drawDetail(ctx);
 
         Theme.divider(ctx, 0, height - footerH, width);
-        ctx.drawCenteredTextWithShadow(textRenderer,
-                Text.literal(com.supermodmenu.Attribution.credit()),
+        ctx.centeredText(font,
+            Component.literal(com.supermodmenu.Attribution.credit()),
                 width / 2, height - footerH + 13, Theme.TEXT_DIM);
         if (ModrinthUpdateChecker.isChecking()) {
-            ctx.drawTextWithShadow(textRenderer,
-                    Text.literal("⟳ " + ModrinthUpdateChecker.getStatusMessage())
-                            .formatted(Formatting.YELLOW),
-                    rightX, height - footerH - 12, Theme.TEXT);
+                ctx.text(font,
+                    Component.literal("⟳ " + ModrinthUpdateChecker.getStatusMessage())
+                        .withStyle(ChatFormatting.YELLOW),
+                    rightX, height - footerH - 12, Theme.TEXT, true);
         }
     }
 
-    private void drawHeader(DrawContext ctx) {
-        ctx.fill(0, 0, width, headerH, Theme.BG_PANEL);
+    private void drawHeader(GuiGraphicsExtractor ctx) {
+        ctx.fill(0, 0, width, headerH, Theme.BG_HEADER);
+        ctx.fill(0, 0, 4, headerH, Theme.ACCENT);
         Theme.divider(ctx, 0, headerH, width);
 
-        ctx.drawTextWithShadow(textRenderer,
-                Text.literal("✦ Super Mod Menu").formatted(Formatting.BOLD),
-                Theme.PAD, 9, Theme.ACCENT);
-        ctx.drawTextWithShadow(textRenderer,
-                Text.literal(allMods.size() + " mods · " + filteredMods.size() + " shown"),
-                Theme.PAD, 24, Theme.TEXT_DIM);
+        ctx.text(font,
+                Component.literal("MOD MENU PRO").withStyle(ChatFormatting.BOLD),
+            Theme.PAD + 2, 9, Theme.TEXT, true);
+        ctx.text(font,
+            Component.literal("Library  /  " + allMods.size() + " installed  /  " + filteredMods.size() + " shown"),
+            Theme.PAD + 2, 25, Theme.TEXT_DIM, true);
     }
 
-    private void drawDetail(DrawContext ctx) {
+    private void drawDetail(GuiGraphicsExtractor ctx) {
         int x = rightX;
         int top = headerH + Theme.PAD + 4;
         int bottom = actionTop - Theme.PAD;
 
         if (selected == null) {
-            ctx.drawCenteredTextWithShadow(textRenderer,
-                    Text.literal("Select a mod to view details").formatted(Formatting.ITALIC),
-                    rightX + rightW / 2, top + 30, Theme.TEXT_DIM);
+            int boxW = Math.min(280, rightW - 24);
+            int boxX = rightX + (rightW - boxW) / 2;
+            Theme.accentedPanel(ctx, boxX, top + 18, boxW, 62, Theme.ACCENT);
+            ctx.centeredText(font,
+                Component.literal("Select a mod").withStyle(ChatFormatting.BOLD),
+                rightX + rightW / 2, top + 38, Theme.TEXT);
+            ctx.centeredText(font,
+                Component.literal("Details and management tools appear here"),
+                rightX + rightW / 2, top + 55, Theme.TEXT_DIM);
             return;
         }
 
         var meta = selected.getMetadata();
         int y = top;
 
+        Theme.sectionLabel(ctx, font, "Overview", x, y, Theme.ACCENT);
+        y += 16;
+
         int iconSz = 46;
         Identifier icon = ModIconCache.getIcon(meta.getId());
         if (icon != null) {
-            ctx.drawTexture(RenderPipelines.GUI_TEXTURED, icon, x, y, 0, 0,
+            ctx.blit(RenderPipelines.GUI_TEXTURED, icon, x, y, 0, 0,
                     iconSz, iconSz, iconSz, iconSz);
         } else {
             Theme.panel(ctx, x, y, iconSz, iconSz, Theme.BG_ELEVATED, Theme.BORDER_LIGHT);
             String fl = meta.getName().isEmpty() ? "?" : meta.getName().substring(0, 1).toUpperCase();
-            ctx.drawCenteredTextWithShadow(textRenderer, Text.literal(fl).formatted(Formatting.BOLD),
-                    x + iconSz / 2, y + (iconSz - textRenderer.fontHeight) / 2, Theme.TEXT_DIM);
+                ctx.centeredText(font, Component.literal(fl).withStyle(ChatFormatting.BOLD),
+                    x + iconSz / 2, y + (iconSz - font.lineHeight) / 2, Theme.TEXT_DIM);
         }
 
         int tx = x + iconSz + 10, tw = rightW - iconSz - 10;
         ModEnvironment env = meta.getEnvironment();
         String envLabel = env == ModEnvironment.CLIENT ? "Client"
                 : env == ModEnvironment.SERVER ? "Server" : null;
-        int envColor = env == ModEnvironment.SERVER ? 0xFF8A6D1F : 0xFF2F5BBF;
+        int envColor = env == ModEnvironment.SERVER ? 0xFF6B541D : 0xFF244F78;
 
         // Name (bold, full width). The badge goes on the version line below so it can't
         // overlap the (wider-than-measured) bold name.
-        ctx.drawTextWithShadow(textRenderer,
-                Text.literal(Theme.clip(textRenderer, meta.getName(), tw)).formatted(Formatting.BOLD),
-                tx, y + 2, Theme.TEXT);
+        ctx.text(font,
+            Component.literal(Theme.clip(font, meta.getName(), tw)).withStyle(ChatFormatting.BOLD),
+            tx, y + 2, Theme.TEXT, true);
 
         // Version + environment badge on the same line
         String verText = "v" + Theme.shortVersion(meta.getVersion().getFriendlyString());
-        ctx.drawTextWithShadow(textRenderer, Text.literal(verText), tx, y + 15, Theme.TEXT_MUTED);
+        ctx.text(font, Component.literal(verText), tx, y + 15, Theme.TEXT_MUTED, true);
         if (envLabel != null) {
-            Theme.envBadge(ctx, textRenderer, envLabel,
-                    tx + textRenderer.getWidth(verText) + 6, y + 13, envColor);
+                Theme.envBadge(ctx, font, envLabel,
+                    tx + font.width(verText) + 6, y + 13, envColor);
         }
         String authors = meta.getAuthors().stream().map(p -> p.getName()).collect(Collectors.joining(", "));
         if (!authors.isBlank()) {
-            ctx.drawTextWithShadow(textRenderer,
-                    Text.literal(Theme.clip(textRenderer, "By " + authors, tw)), tx, y + 26, Theme.TEXT_DIM);
+                ctx.text(font,
+                    Component.literal(Theme.clip(font, "By " + authors, tw)), tx, y + 26, Theme.TEXT_DIM, true);
+        }
+
+        if (ModDataManager.isFavorite(meta.getId())) {
+            ctx.text(font, Component.literal("★"), x + iconSz - 8, y - 2, Theme.GOLD, true);
         }
 
         y += iconSz + 8;
@@ -476,19 +497,21 @@ public class ModListScreen extends Screen {
 
         var upd = ModrinthUpdateChecker.getResult(meta.getId());
         if (upd.status() == ModrinthUpdateChecker.Status.UPDATE_AVAILABLE) {
-            Theme.banner(ctx, textRenderer, "⬆ Update available: " + upd.latestVersion(),
+            Theme.banner(ctx, font, "⬆ Update available: " + upd.latestVersion(),
                     x, y, rightW, Theme.GREEN, Theme.GREEN_DIM);
             y += 22;
         }
         String note = ModDataManager.getNote(meta.getId());
         if (!note.isBlank()) {
-            Theme.banner(ctx, textRenderer, Theme.clip(textRenderer, "✎ " + note, rightW - 12),
+            Theme.banner(ctx, font, Theme.clip(font, "✎ " + note, rightW - 12),
                     x, y, rightW, Theme.ACCENT, Theme.ACCENT_DIM);
             y += 22;
         }
 
         Theme.divider(ctx, x, y, rightW);
-        y += 6;
+        y += 7;
+        Theme.sectionLabel(ctx, font, "About", x, y, Theme.TEXT_DIM);
+        y += 15;
 
         // "Why is this installed?" — reverse-dependency lookup.
         List<String> dependents = graph == null ? List.of()
@@ -498,25 +521,25 @@ public class ModListScreen extends Screen {
                     .map(d -> FabricLoader.getInstance().getModContainer(d)
                             .map(c -> c.getMetadata().getName()).orElse(d))
                     .collect(Collectors.joining(", "));
-            ctx.drawTextWithShadow(textRenderer,
-                    Text.literal(Theme.clip(textRenderer, "Required by: " + names, rightW)),
-                    x, y, Theme.BLUE);
-            y += textRenderer.fontHeight + 4;
+                ctx.text(font,
+                    Component.literal(Theme.clip(font, "Required by: " + names, rightW)),
+                    x, y, Theme.BLUE, true);
+                y += font.lineHeight + 4;
         }
 
         String desc = ModrinthDescriptionCache.getDescription(meta.getId(), meta.getDescription());
         if (desc == null || desc.isBlank()) desc = "No description available.";
 
-        List<OrderedText> lines = textRenderer.wrapLines(Text.literal(desc), rightW);
-        int lh = textRenderer.fontHeight + 2;
+        List<FormattedCharSequence> lines = font.split(Component.literal(desc), rightW);
+        int lh = font.lineHeight + 2;
         int maxScroll = Math.max(0, lines.size() * lh - (bottom - y));
         detailScroll = Math.max(0, Math.min(detailScroll, maxScroll));
 
         ctx.enableScissor(x, y, x + rightW, bottom);
         int ly = y - detailScroll;
-        for (OrderedText line : lines) {
+        for (FormattedCharSequence line : lines) {
             if (ly + lh >= y && ly <= bottom)
-                ctx.drawTextWithShadow(textRenderer, line, x, ly, Theme.TEXT_MUTED);
+                ctx.text(font, line, x, ly, Theme.TEXT_MUTED, true);
             ly += lh;
         }
         ctx.disableScissor();
@@ -542,12 +565,12 @@ public class ModListScreen extends Screen {
             Object factory = mm.getMethod("getConfigScreenFactory", String.class).invoke(null, modId);
             if (factory != null) {
                 Screen cs = (Screen) factory.getClass().getMethod("create", Screen.class).invoke(factory, this);
-                if (cs != null) { client.setScreen(cs); return; }
+                if (cs != null) { minecraft.gui.setScreen(cs); return; }
             }
         } catch (Exception e) {
             SuperModMenuClient.LOGGER.error("Failed to open config for {}", modId, e);
         }
-        client.setScreen(new NoConfigScreen(this, selected.getMetadata().getName()));
+        minecraft.gui.setScreen(new NoConfigScreen(this, selected.getMetadata().getName()));
     }
 
     private void toggleFavorite() {
@@ -559,13 +582,13 @@ public class ModListScreen extends Screen {
 
     private void openNote() {
         if (selected == null) return;
-        client.setScreen(new NoteEditorScreen(this,
+        minecraft.gui.setScreen(new NoteEditorScreen(this,
                 selected.getMetadata().getId(), selected.getMetadata().getName()));
     }
 
     private void openDeps() {
         if (selected == null) return;
-        client.setScreen(new DependencyGraphScreen(this,
+        minecraft.gui.setScreen(new DependencyGraphScreen(this,
                 selected.getMetadata().getId(),
                 com.supermodmenu.dependency.DependencyGraph.build()));
     }
@@ -586,29 +609,29 @@ public class ModListScreen extends Screen {
                 : slug != null ? "https://modrinth.com/mod/" + slug
                 : "https://modrinth.com/mod/" + selected.getMetadata().getId();
         try {
-            net.minecraft.util.Util.getOperatingSystem().open(java.net.URI.create(url));
+            net.minecraft.util.Util.getPlatform().openUri(java.net.URI.create(url));
         } catch (Exception e) {
             SuperModMenuClient.LOGGER.error("Failed to open URL {}", url, e);
         }
     }
 
     private void promptRestart() {
-        client.setScreen(new net.minecraft.client.gui.screen.ConfirmScreen(
+        minecraft.gui.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
                 confirmed -> {
-                    if (confirmed) client.scheduleStop();   // clean shutdown; relaunch applies new mods
-                    else client.setScreen(this);
+                    if (confirmed) minecraft.stop();   // clean shutdown; relaunch applies new mods
+                    else minecraft.gui.setScreen(this);
                 },
-                Text.literal("Restart Minecraft?").formatted(Formatting.BOLD),
-                Text.literal("Mods were installed or updated. Quit now so they load on next launch?"),
-                Text.literal("Quit Now"),
-                Text.literal("Later")));
+                Component.literal("Restart Minecraft?").withStyle(ChatFormatting.BOLD),
+                Component.literal("Mods were installed or updated. Quit now so they load on next launch?"),
+                Component.literal("Quit Now"),
+                Component.literal("Later")));
     }
 
     private void openModsFolder() {
         try {
             java.nio.file.Path modsDir = FabricLoader.getInstance().getGameDir().resolve("mods");
             java.nio.file.Files.createDirectories(modsDir);
-            net.minecraft.util.Util.getOperatingSystem().open(modsDir.toUri());
+            net.minecraft.util.Util.getPlatform().openUri(modsDir.toUri());
         } catch (Exception e) {
             SuperModMenuClient.LOGGER.error("Failed to open mods folder", e);
         }
@@ -616,11 +639,11 @@ public class ModListScreen extends Screen {
 
     private void checkUpdates() {
         if (ModrinthUpdateChecker.isChecking()) return;
-        updatesBtn.setMessage(Text.literal("Checking…"));
+        updatesBtn.setMessage(Component.literal("Checking…"));
         updatesBtn.active = false;
-        String mc = SharedConstants.getGameVersion().name();
-        ModrinthUpdateChecker.checkAllAsync(mc).thenRun(() -> client.execute(() -> {
-            updatesBtn.setMessage(Text.literal("⟳ Updates"));
+        String mc = SharedConstants.getCurrentVersion().name();
+        ModrinthUpdateChecker.checkAllAsync(mc).thenRun(() -> minecraft.execute(() -> {
+            updatesBtn.setMessage(Component.literal("⟳ Updates"));
             updatesBtn.active = true;
             refreshFilter();
         }));
@@ -638,11 +661,11 @@ public class ModListScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == 256) { close(); return true; }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+    public boolean keyPressed(KeyEvent event) {
+        if (event.key() == 256) { onClose(); return true; }
+        return super.keyPressed(event);
     }
 
     @Override
-    public void close() { client.setScreen(parent); }
+    public void onClose() { minecraft.gui.setScreen(parent); }
 }

@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "id": "supermodmenu",
   "version": "${version}",
-  "name": "Super Mod Menu",
-  "description": "A focused, modern mod menu for Fabric: in-game Modrinth browser, hash-based update checker with one-click updates, rich detail panel, favorites, notes, and dependency insight.",
+  "name": "Mod Menu Pro",
+  "description": "A polished mod manager for Fabric with search, favorites, notes, dependency insights, update checks, and an in-game Modrinth browser. Built for Minecraft 26.2.",
   "authors": ["Kamlesh Choudhary"],
   "contact": {
     "homepage": "https://devxkamlesh.com",
@@ -13,17 +13,18 @@
   "license": "MIT",
   "icon": "assets/supermodmenu/icon.png",
   "environment": "client",
-  "entrypoints": {
-    "client": [
-      "com.supermodmenu.SuperModMenuClient"
-    ]
-  },
+    "entrypoints": {
+      "client": [
+        "com.supermodmenu.SuperModMenuClient"
+      ]
+    },
   "mixins": [
     "supermodmenu.mixins.json"
   ],
-  "depends": {
-    "fabricloader": ">=0.16.0",
-    "fabric-api": "*",
-    "minecraft": ">=1.21.6 <1.22"
-  }
+    "depends": {
+      "fabricloader": ">=0.19.3",
+      "fabric-api": "*",
+      "minecraft": "26.2",
+      "java": ">=25"
+    }
 }

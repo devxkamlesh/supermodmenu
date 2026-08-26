@@ -1,8 +1,8 @@
 package com.supermodmenu.gui;
 
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.Font;
+import net.minecraft.network.chat.Component;
 
 /**
  * Centralised design tokens and small reusable draw helpers for Super Mod Menu.
@@ -17,83 +17,101 @@ public final class Theme {
     private Theme() {}
 
     // ── Spacing ────────────────────────────────────────────────────────────────
-    public static final int PAD       = 10;
+    public static final int PAD       = 12;
     public static final int GAP       = 6;
     public static final int RADIUS    = 1;   // visual hint only (flat UI)
     public static final int BTN_H     = 20;
 
     // ── Surface colours (ARGB) ──────────────────────────────────────────────────
-    public static final int BG_APP      = 0xF00E0E14;  // app backdrop
-    public static final int BG_PANEL    = 0xFF15151E;  // panels / sidebar
-    public static final int BG_CARD     = 0xFF1C1C28;  // list cards
-    public static final int BG_CARD_HOV = 0xFF262634;  // hover
-    public static final int BG_ELEVATED = 0xFF222230;  // inputs, chips
+    public static final int BG_APP      = 0xFA080D13;  // deep navy app backdrop
+    public static final int BG_HEADER   = 0xFF0D141D;  // top navigation surface
+    public static final int BG_SIDEBAR  = 0xFF101822;  // library rail
+    public static final int BG_PANEL    = 0xFF121B26;  // panels / footer
+    public static final int BG_CARD     = 0xFF17222E;  // list cards
+    public static final int BG_CARD_HOV = 0xFF1D2D3B;  // hover
+    public static final int BG_SELECTED = 0xFF17372F;  // emerald-tinted selection
+    public static final int BG_ELEVATED = 0xFF1C2936;  // inputs, chips
     public static final int BG_SCRIM    = 0xC0000000;  // modal dim
+    public static final int SHADOW       = 0x66000000;
 
     // ── Lines ────────────────────────────────────────────────────────────────--
-    public static final int BORDER       = 0xFF2A2A3A;
-    public static final int BORDER_LIGHT = 0xFF3A3A4E;
-    public static final int DIVIDER      = 0x22FFFFFF;
+    public static final int BORDER       = 0xFF263543;
+    public static final int BORDER_LIGHT = 0xFF3A4D5D;
+    public static final int DIVIDER      = 0x335B7183;
 
     // ── Brand / accents ─────────────────────────────────────────────────────────
-    public static final int ACCENT       = 0xFFFF9F1C;  // primary (amber)
-    public static final int ACCENT_DIM   = 0x55FF9F1C;
-    public static final int GREEN        = 0xFF22C55E;  // get mods / success
-    public static final int GREEN_DIM    = 0x5522C55E;
-    public static final int BLUE         = 0xFF3B82F6;  // updates / info
-    public static final int BLUE_DIM     = 0x553B82F6;
-    public static final int RED          = 0xFFEF4444;  // danger / disabled
-    public static final int RED_DIM      = 0x55EF4444;
-    public static final int GOLD         = 0xFFFFD54A;  // favourite star
+    public static final int ACCENT       = 0xFF34D399;  // emerald primary
+    public static final int ACCENT_HOVER = 0xFF6EE7B7;
+    public static final int ACCENT_DIM   = 0x4934D399;
+    public static final int GREEN        = ACCENT;      // success / install
+    public static final int GREEN_DIM    = ACCENT_DIM;
+    public static final int BLUE         = 0xFF60A5FA;  // updates / info
+    public static final int BLUE_DIM     = 0x3D60A5FA;
+    public static final int RED          = 0xFFF87171;  // danger / disabled
+    public static final int RED_DIM      = 0x3DF87171;
+    public static final int GOLD         = 0xFFFBBF24;  // favourite star
+    public static final int GOLD_DIM     = 0x3DFBBF24;
 
     // ── Text ─────────────────────────────────────────────────────────────────--
-    public static final int TEXT         = 0xFFF2F2F7;
-    public static final int TEXT_MUTED   = 0xFFA8A8B8;
-    public static final int TEXT_DIM     = 0xFF6A6A78;
+    public static final int TEXT         = 0xFFF4F7FA;
+    public static final int TEXT_MUTED   = 0xFFB6C2CE;
+    public static final int TEXT_DIM     = 0xFF718294;
 
     // ── Primitives ───────────────────────────────────────────────────────────--
 
     /** Filled panel with a subtle outline. */
-    public static void panel(DrawContext ctx, int x, int y, int w, int h) {
+    public static void panel(GuiGraphicsExtractor ctx, int x, int y, int w, int h) {
         panel(ctx, x, y, w, h, BG_PANEL, BORDER);
     }
 
-    public static void panel(DrawContext ctx, int x, int y, int w, int h, int fill, int border) {
+    public static void panel(GuiGraphicsExtractor ctx, int x, int y, int w, int h, int fill, int border) {
+        ctx.fill(x + 2, y + 2, x + w + 2, y + h + 2, SHADOW);
         ctx.fill(x, y, x + w, y + h, fill);
-        ctx.drawBorder(x, y, w, h, border);
+        ctx.outline(x, y, w, h, border);
+    }
+
+    /** Elevated panel with a narrow semantic accent along its top edge. */
+    public static void accentedPanel(GuiGraphicsExtractor ctx, int x, int y, int w, int h, int accent) {
+        panel(ctx, x, y, w, h, BG_PANEL, BORDER);
+        ctx.fill(x + 1, y + 1, x + w - 1, y + 3, accent);
+    }
+
+    /** Quiet uppercase label used to establish hierarchy between screen regions. */
+    public static void sectionLabel(GuiGraphicsExtractor ctx, Font tr, String label, int x, int y, int color) {
+        ctx.text(tr, Component.literal(label.toUpperCase()), x, y, color, true);
     }
 
     /** A coloured "chip"/badge with centred label. */
-    public static void chip(DrawContext ctx, TextRenderer tr, String label,
+    public static void chip(GuiGraphicsExtractor ctx, Font tr, String label,
                             int x, int y, int w, int h, int bg, int fg) {
         ctx.fill(x, y, x + w, y + h, bg);
-        ctx.drawCenteredTextWithShadow(tr, Text.literal(label),
-                x + w / 2, y + (h - tr.fontHeight) / 2 + 1, fg);
+        ctx.centeredText(tr, Component.literal(label),
+            x + w / 2, y + (h - tr.lineHeight) / 2 + 1, fg);
     }
 
     /** Full-width status banner (e.g. "update available"). */
-    public static void banner(DrawContext ctx, TextRenderer tr, String label,
+    public static void banner(GuiGraphicsExtractor ctx, Font tr, String label,
                               int x, int y, int w, int accent, int fillTint) {
         int h = 18;
         ctx.fill(x, y, x + w, y + h, fillTint);
         ctx.fill(x, y, x + 2, y + h, accent);          // left accent bar
-        ctx.drawTextWithShadow(tr, Text.literal(label), x + 8, y + (h - tr.fontHeight) / 2 + 1, TEXT);
+        ctx.text(tr, Component.literal(label), x + 8, y + (h - tr.lineHeight) / 2 + 1, TEXT, true);
     }
 
-    public static void divider(DrawContext ctx, int x, int y, int w) {
+    public static void divider(GuiGraphicsExtractor ctx, int x, int y, int w) {
         ctx.fill(x, y, x + w, y + 1, DIVIDER);
     }
 
     /** Vertical accent bar used to mark the selected list entry. */
-    public static void accentBar(DrawContext ctx, int x, int y, int h, int color) {
+    public static void accentBar(GuiGraphicsExtractor ctx, int x, int y, int h, int color) {
         ctx.fill(x, y, x + 3, y + h, color);
     }
 
     /** Small environment pill (e.g. "Client"/"Server"), Mod Menu style. Returns its width. */
-    public static int envBadge(DrawContext ctx, TextRenderer tr, String label, int x, int y, int bg) {
-        int w = tr.getWidth(label) + 8;
+    public static int envBadge(GuiGraphicsExtractor ctx, Font tr, String label, int x, int y, int bg) {
+        int w = tr.width(label) + 8;
         ctx.fill(x, y, x + w, y + 13, bg);
-        ctx.drawTextWithShadow(tr, Text.literal(label), x + 4, y + 3, 0xFFEAF1FF);
+        ctx.text(tr, Component.literal(label), x + 4, y + 3, 0xFFEAF1FF, true);
         return w;
     }
 
@@ -101,7 +119,7 @@ public final class Theme {
      * A classic 8-dot rotating spinner centred on (cx, cy). Self-animating from the
      * system clock, so it just needs to be drawn every frame (which screens already do).
      */
-    public static void spinner(DrawContext ctx, int cx, int cy, int radius, int baseColor) {
+    public static void spinner(GuiGraphicsExtractor ctx, int cx, int cy, int radius, int baseColor) {
         final int dots = 8;
         int head = (int) ((System.currentTimeMillis() / 90) % dots);
         for (int i = 0; i < dots; i++) {
@@ -121,10 +139,10 @@ public final class Theme {
     }
 
     /** Clip a string with an ellipsis so it fits within {@code maxW} pixels. */
-    public static String clip(TextRenderer tr, String s, int maxW) {
+    public static String clip(Font tr, String s, int maxW) {
         if (s == null) return "";
-        if (tr.getWidth(s) <= maxW) return s;
-        while (!s.isEmpty() && tr.getWidth(s + "…") > maxW) {
+        if (tr.width(s) <= maxW) return s;
+        while (!s.isEmpty() && tr.width(s + "…") > maxW) {
             s = s.substring(0, s.length() - 1);
         }
         return s + "…";

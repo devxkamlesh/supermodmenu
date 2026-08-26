@@ -7,15 +7,17 @@ import com.supermodmenu.SuperModMenuClient;
 import com.supermodmenu.gui.Theme;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.SharedConstants;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 
 import java.io.InputStream;
 import java.net.URI;
@@ -43,10 +45,10 @@ public class ModrinthBrowserScreen extends Screen {
 
     private static final String API   = "https://api.modrinth.com/v2";
     private static final int PAGE     = 20;
-    private static final int HEADER_H = 56;
-    private static final int FOOTER_H = 34;
-    private static final int CARD_H   = 60;
-    private static final int CARD_GAP = 6;
+    private static final int HEADER_H = 64;
+    private static final int FOOTER_H = 38;
+    private static final int CARD_H   = 64;
+    private static final int CARD_GAP = 8;
     private static final int ICON     = 44;
     private static final int MAX_W    = 640;
 
@@ -56,8 +58,8 @@ public class ModrinthBrowserScreen extends Screen {
     private enum DlState { INSTALL, DOWNLOADING, DONE, FAILED }
 
     private final Screen parent;
-    private TextFieldWidget searchBox;
-    private ButtonWidget searchBtn, backBtn, loadMoreBtn;
+    private EditBox searchBox;
+    private Button searchBtn, backBtn, loadMoreBtn;
 
     private final List<ModEntry> mods = new ArrayList<>();
     private final Set<String> installedSlugs = ConcurrentHashMap.newKeySet();
@@ -72,7 +74,7 @@ public class ModrinthBrowserScreen extends Screen {
     public static volatile boolean newModsInstalled = false;
 
     public ModrinthBrowserScreen(Screen parent) {
-        super(Text.literal("Get Mods"));
+        super(Component.literal("Get Mods"));
         this.parent = parent;
     }
 
@@ -86,25 +88,25 @@ public class ModrinthBrowserScreen extends Screen {
         int searchBtnW = 78;
         int searchW = contentW - searchBtnW - Theme.GAP;
 
-        searchBox = new TextFieldWidget(textRenderer, contentX, 30, searchW, 20, Text.literal(""));
+        searchBox = new EditBox(font, contentX, 36, searchW, 20, Component.literal(""));
         searchBox.setMaxLength(128);
-        searchBox.setPlaceholder(Text.literal("Search Modrinth…  (empty = popular)")
-                .formatted(Formatting.DARK_GRAY));
-        addDrawableChild(searchBox);
+        searchBox.setHint(Component.literal("Search Modrinth…  (empty = popular)")
+            .withStyle(ChatFormatting.DARK_GRAY));
+        addRenderableWidget(searchBox);
 
-        searchBtn = ButtonWidget.builder(Text.literal("Search"),
-                        b -> startSearch(searchBox.getText().trim()))
-                .dimensions(contentX + searchW + Theme.GAP, 30, searchBtnW, 20).build();
-        addDrawableChild(searchBtn);
+        searchBtn = Button.builder(Component.literal("Search"),
+                b -> startSearch(searchBox.getValue().trim()))
+            .bounds(contentX + searchW + Theme.GAP, 36, searchBtnW, 20).build();
+        addRenderableWidget(searchBtn);
 
-        backBtn = ButtonWidget.builder(Text.literal("← Back"), b -> close())
-                .dimensions(Theme.PAD, height - FOOTER_H + 7, 80, 20).build();
-        addDrawableChild(backBtn);
+        backBtn = Button.builder(Component.literal("← Back"), b -> onClose())
+            .bounds(Theme.PAD, height - FOOTER_H + 7, 80, 20).build();
+        addRenderableWidget(backBtn);
 
-        loadMoreBtn = ButtonWidget.builder(Text.literal("Load More ↓"), b -> loadMore())
-                .dimensions(width - Theme.PAD - 110, height - FOOTER_H + 7, 110, 20).build();
+        loadMoreBtn = Button.builder(Component.literal("Load More ↓"), b -> loadMore())
+            .bounds(width - Theme.PAD - 110, height - FOOTER_H + 7, 110, 20).build();
         loadMoreBtn.visible = false;
-        addDrawableChild(loadMoreBtn);
+        addRenderableWidget(loadMoreBtn);
 
         if (mods.isEmpty() && statusMessage == null) startPopular();
     }
@@ -162,7 +164,7 @@ public class ModrinthBrowserScreen extends Screen {
     private void fetchPage(String query, int offset, boolean fresh) {
         loading = true; hasMore = false;
         statusMessage = fresh ? (query == null ? "Loading popular…" : "Searching…") : "Loading more…";
-        client.execute(() -> { if (loadMoreBtn != null) loadMoreBtn.visible = false; });
+        minecraft.execute(() -> { if (loadMoreBtn != null) loadMoreBtn.visible = false; });
 
         CompletableFuture.runAsync(() -> {
             try {
@@ -183,7 +185,7 @@ public class ModrinthBrowserScreen extends Screen {
                 int newOff = offset + results.size();
                 boolean more = !results.isEmpty() && newOff < total;
 
-                client.execute(() -> {
+                minecraft.execute(() -> {
                     if (fresh) mods.clear();
                     mods.addAll(results);
                     currentOffset = newOff; hasMore = more;
@@ -253,7 +255,7 @@ public class ModrinthBrowserScreen extends Screen {
 
         CompletableFuture.runAsync(() -> {
             try {
-                String mcVer = SharedConstants.getGameVersion().name();
+                String mcVer = SharedConstants.getCurrentVersion().name();
                 // 1) Resolve a Fabric version compatible with this game version.
                 String url = API + "/project/" + mod.projectId + "/version?loaders="
                         + URLEncoder.encode("[\"fabric\"]", StandardCharsets.UTF_8)
@@ -314,22 +316,27 @@ public class ModrinthBrowserScreen extends Screen {
 
     // ── Render (opaque, manual cards) ─────────────────────────────────────────--
     @Override
-    public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
+    public void extractBackground(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta) {
         // Suppress vanilla dirt background + copyright text; we paint our own.
     }
 
     @Override
-    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+    public void extractRenderState(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta) {
         scroll = Math.abs(targetScroll - scroll) > 0.5f
-                ? MathHelper.lerp(0.35f, scroll, targetScroll) : targetScroll;
+                ? Mth.lerp(0.35f, scroll, targetScroll) : targetScroll;
         if (mods.isEmpty() && !loading && statusMessage == null) startPopular();
 
         ctx.fill(0, 0, width, height, Theme.BG_APP);
 
         int contentW = Math.min(MAX_W, width - 2 * Theme.PAD);
         int contentX = (width - contentW) / 2;
-        int listTop = HEADER_H + 6;
+        int listTop = HEADER_H + 10;
         int listBot = height - FOOTER_H;
+
+        ctx.fill(contentX - 8, HEADER_H + 4, contentX + contentW + 8, listBot,
+            Theme.BG_SIDEBAR);
+        ctx.outline(contentX - 8, HEADER_H + 4, contentW + 16,
+            listBot - HEADER_H - 4, Theme.BORDER);
 
         if (mods.isEmpty()) {
             drawCentreMessage(ctx, listTop, listBot, contentW);
@@ -347,98 +354,103 @@ public class ModrinthBrowserScreen extends Screen {
         }
 
         // Header
-        ctx.fill(0, 0, width, HEADER_H, Theme.BG_PANEL);
+        ctx.fill(0, 0, width, HEADER_H, Theme.BG_HEADER);
+        ctx.fill(0, 0, 4, HEADER_H, Theme.ACCENT);
         Theme.divider(ctx, 0, HEADER_H, width);
-        ctx.drawTextWithShadow(textRenderer,
-                Text.literal("⬇ Get Mods").formatted(Formatting.BOLD), Theme.PAD, 8, Theme.GREEN);
+        ctx.text(font,
+            Component.literal("GET MODS").withStyle(ChatFormatting.BOLD), Theme.PAD + 2, 8, Theme.TEXT, true);
+        ctx.text(font, Component.literal("Discover Fabric mods from Modrinth"),
+                Theme.PAD + 2, 21, Theme.TEXT_DIM, true);
         if (searchBtn != null) searchBtn.active = !loading;
         if (statusMessage != null) {
             int col = loading ? Theme.GOLD
                     : statusMessage.startsWith("✔") ? Theme.GREEN
                     : statusMessage.startsWith("Error") ? Theme.RED : Theme.TEXT_DIM;
-            String s = Theme.clip(textRenderer, statusMessage, contentW - 90);
-            ctx.drawTextWithShadow(textRenderer, Text.literal(s),
-                    width - Theme.PAD - textRenderer.getWidth(s), 8, col);
+                String s = Theme.clip(font, statusMessage, contentW - 90);
+                ctx.text(font, Component.literal(s),
+                    width - Theme.PAD - font.width(s), 8, col, true);
         }
 
         // Footer
         ctx.fill(0, height - FOOTER_H, width, height, Theme.BG_PANEL);
         Theme.divider(ctx, 0, height - FOOTER_H, width);
-        ctx.drawCenteredTextWithShadow(textRenderer, Text.literal("Powered by Modrinth"),
+        ctx.centeredText(font, Component.literal("Powered by Modrinth"),
                 width / 2, height - FOOTER_H + 13, Theme.TEXT_DIM);
 
-        super.render(ctx, mouseX, mouseY, delta);
+        super.extractRenderState(ctx, mouseX, mouseY, delta);
     }
 
-    private void drawCentreMessage(DrawContext ctx, int listTop, int listBot, int contentW) {
+    private void drawCentreMessage(GuiGraphicsExtractor ctx, int listTop, int listBot, int contentW) {
         int boxW = Math.min(380, contentW), boxX = (width - boxW) / 2;
         int boxY = (listTop + listBot) / 2 - 26, boxH = 52;
-        Theme.panel(ctx, boxX, boxY, boxW, boxH, Theme.BG_PANEL, Theme.BORDER);
+        Theme.accentedPanel(ctx, boxX, boxY, boxW, boxH,
+            loading ? Theme.ACCENT : Theme.BLUE);
         if (loading) {
             Theme.spinner(ctx, width / 2, boxY + 16, 9, Theme.GREEN);
-            ctx.drawCenteredTextWithShadow(textRenderer,
-                    Text.literal("Loading mods" + Theme.workingDots()), width / 2, boxY + 34, Theme.TEXT);
+                ctx.centeredText(font,
+                    Component.literal("Loading mods" + Theme.workingDots()), width / 2, boxY + 34, Theme.TEXT);
         } else {
             boolean err = statusMessage != null && statusMessage.startsWith("Error");
-            ctx.drawCenteredTextWithShadow(textRenderer,
-                    Text.literal(err ? "⚠ Couldn't load mods" : "No mods found").formatted(Formatting.BOLD),
+                ctx.centeredText(font,
+                    Component.literal(err ? "⚠ Couldn't load mods" : "No mods found").withStyle(ChatFormatting.BOLD),
                     width / 2, boxY + 14, err ? Theme.RED : Theme.TEXT);
-            ctx.drawCenteredTextWithShadow(textRenderer,
-                    Text.literal(err ? Theme.clip(textRenderer, statusMessage, boxW - 16)
+                ctx.centeredText(font,
+                    Component.literal(err ? Theme.clip(font, statusMessage, boxW - 16)
                                      : "Try a different search."),
                     width / 2, boxY + 32, Theme.TEXT_DIM);
         }
     }
 
-    private void drawCard(DrawContext ctx, int x, int y, int w, ModEntry mod, int mx, int my) {
+    private void drawCard(GuiGraphicsExtractor ctx, int x, int y, int w, ModEntry mod, int mx, int my) {
         boolean hov = mx >= x && mx < x + w && my >= y && my < y + CARD_H && my >= HEADER_H;
         ctx.fill(x, y, x + w, y + CARD_H, hov ? Theme.BG_CARD_HOV : Theme.BG_CARD);
-        ctx.drawBorder(x, y, w, CARD_H, Theme.BORDER);
+        ctx.outline(x, y, w, CARD_H, hov ? Theme.BORDER_LIGHT : Theme.BORDER);
+        if (hov) Theme.accentBar(ctx, x, y, CARD_H, Theme.ACCENT);
 
         int iconX = x + 8, iconY = y + (CARD_H - ICON) / 2;
         Identifier id = mod.iconUrl != null ? ModrinthIconCache.getIcon(mod.projectId, mod.iconUrl) : null;
         if (id != null) {
-            ctx.drawTexture(RenderPipelines.GUI_TEXTURED, id, iconX, iconY, 0, 0, ICON, ICON, ICON, ICON);
+            ctx.blit(RenderPipelines.GUI_TEXTURED, id, iconX, iconY, 0, 0, ICON, ICON, ICON, ICON);
         } else {
             ctx.fill(iconX, iconY, iconX + ICON, iconY + ICON, Theme.BG_ELEVATED);
-            ctx.drawBorder(iconX, iconY, ICON, ICON, Theme.BORDER_LIGHT);
+            ctx.outline(iconX, iconY, ICON, ICON, Theme.BORDER_LIGHT);
             String letter = mod.title.isEmpty() ? "?" : mod.title.substring(0, 1).toUpperCase();
-            ctx.drawCenteredTextWithShadow(textRenderer, Text.literal(letter).formatted(Formatting.BOLD),
-                    iconX + ICON / 2, iconY + (ICON - textRenderer.fontHeight) / 2, Theme.TEXT_DIM);
+                ctx.centeredText(font, Component.literal(letter).withStyle(ChatFormatting.BOLD),
+                    iconX + ICON / 2, iconY + (ICON - font.lineHeight) / 2, Theme.TEXT_DIM);
         }
 
         DlState st = stateOf(mod);
         int btnW = 96, btnH = 20, btnX = x + w - btnW - 8, btnY = y + (CARD_H - btnH) / 2;
         int textX = iconX + ICON + 10, maxW = btnX - textX - 8;
 
-        ctx.drawTextWithShadow(textRenderer,
-                Text.literal(Theme.clip(textRenderer, mod.title, maxW)).formatted(Formatting.BOLD),
-                textX, y + 8, Theme.TEXT);
-        ctx.drawTextWithShadow(textRenderer,
-                Text.literal(Theme.clip(textRenderer,
+        ctx.text(font,
+            Component.literal(Theme.clip(font, mod.title, maxW)).withStyle(ChatFormatting.BOLD),
+            textX, y + 8, Theme.TEXT, true);
+        ctx.text(font,
+            Component.literal(Theme.clip(font,
                         "by " + mod.author + "  ·  " + fmt(mod.downloads) + " downloads", maxW)),
-                textX, y + 20, Theme.TEXT_DIM);
-        ctx.drawTextWithShadow(textRenderer,
-                Text.literal(Theme.clip(textRenderer, mod.description, maxW)),
-                textX, y + 34, Theme.TEXT_MUTED);
+            textX, y + 20, Theme.TEXT_DIM, true);
+        ctx.text(font,
+            Component.literal(Theme.clip(font, mod.description, maxW)),
+            textX, y + 34, Theme.TEXT_MUTED, true);
 
         // Install button
         boolean btnHov = mx >= btnX && mx < btnX + btnW && my >= btnY && my < btnY + btnH && my >= HEADER_H;
         int bg, border, fg = Theme.TEXT; String lbl;
         switch (st) {
-            case DONE        -> { bg = 0xFF1A3A20; border = 0xFF2A6A2A; lbl = "✔ Installed"; }
+            case DONE        -> { bg = Theme.ACCENT_DIM; border = Theme.ACCENT; lbl = "✔ Installed"; }
             case DOWNLOADING -> { bg = Theme.BG_ELEVATED; border = Theme.BORDER; lbl = "↓ " + Theme.workingDots(); }
-            case FAILED      -> { bg = 0xFF3A1E1E; border = Theme.RED; lbl = "⚠ Retry"; }
-            default          -> { bg = btnHov ? Theme.GREEN : 0xFF26402C;
-                                  border = btnHov ? Theme.GREEN : Theme.BORDER; lbl = "↓ Install"; }
+            case FAILED      -> { bg = Theme.RED_DIM; border = Theme.RED; lbl = "⚠ Retry"; }
+            default          -> { bg = btnHov ? Theme.ACCENT : Theme.ACCENT_DIM;
+                                  border = btnHov ? Theme.ACCENT_HOVER : Theme.ACCENT; lbl = "↓ Install"; }
         }
         ctx.fill(btnX, btnY, btnX + btnW, btnY + btnH, bg);
-        ctx.drawBorder(btnX, btnY, btnW, btnH, border);
-        ctx.drawCenteredTextWithShadow(textRenderer, Text.literal(lbl),
-                btnX + btnW / 2, btnY + (btnH - textRenderer.fontHeight) / 2, fg);
+        ctx.outline(btnX, btnY, btnW, btnH, border);
+        ctx.centeredText(font, Component.literal(lbl),
+            btnX + btnW / 2, btnY + (btnH - font.lineHeight) / 2, fg);
     }
 
-    private void drawScrollbar(DrawContext ctx, int listTop, int listBot) {
+    private void drawScrollbar(GuiGraphicsExtractor ctx, int listTop, int listBot) {
         int totalH = mods.size() * (CARD_H + CARD_GAP);
         int visibleH = listBot - listTop;
         if (totalH <= visibleH) return;
@@ -446,8 +458,8 @@ public class ModrinthBrowserScreen extends Screen {
         int thumbH = Math.max(24, visibleH * visibleH / totalH);
         float frac = scroll / (totalH - visibleH);
         int thumbY = listTop + (int) (frac * (visibleH - thumbH));
-        ctx.fill(barX, listTop, barX + barW, listBot, 0x33FFFFFF);
-        ctx.fill(barX, thumbY, barX + barW, thumbY + thumbH, Theme.BORDER_LIGHT);
+        ctx.fill(barX, listTop, barX + barW, listBot, Theme.BG_ELEVATED);
+        ctx.fill(barX, thumbY, barX + barW, thumbY + thumbH, Theme.ACCENT);
     }
 
     private String fmt(int d) {
@@ -456,8 +468,9 @@ public class ModrinthBrowserScreen extends Screen {
 
     // ── Input ───────────────────────────────────────────────────────────────--
     @Override
-    public boolean mouseClicked(double mx, double my, int btn) {
-        if (btn == 0) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mx = event.x(), my = event.y();
+        if (event.button() == 0) {
             int contentW = Math.min(MAX_W, width - 2 * Theme.PAD);
             int contentX = (width - contentW) / 2;
             int listTop = HEADER_H + 6, listBot = height - FOOTER_H;
@@ -474,29 +487,29 @@ public class ModrinthBrowserScreen extends Screen {
                 }
             }
         }
-        return super.mouseClicked(mx, my, btn);
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
     public boolean mouseScrolled(double mx, double my, double ha, double va) {
         int totalH = mods.size() * (CARD_H + CARD_GAP);
-        int visibleH = (height - FOOTER_H) - (HEADER_H + 6);
+        int visibleH = (height - FOOTER_H) - (HEADER_H + 10);
         int maxScroll = Math.max(0, totalH - visibleH);
-        targetScroll = MathHelper.clamp(targetScroll - (float) (va * 32), 0, maxScroll);
+        targetScroll = Mth.clamp(targetScroll - (float) (va * 32), 0, maxScroll);
         return true;
     }
 
     @Override
-    public boolean keyPressed(int key, int scan, int modifiers) {
-        if (key == 256) { close(); return true; }
-        if ((key == 257 || key == 335) && searchBox.isFocused()) {
-            startSearch(searchBox.getText().trim()); return true;
+    public boolean keyPressed(KeyEvent event) {
+        if (event.key() == 256) { onClose(); return true; }
+        if ((event.key() == 257 || event.key() == 335) && searchBox.isFocused()) {
+            startSearch(searchBox.getValue().trim()); return true;
         }
-        return super.keyPressed(key, scan, modifiers);
+        return super.keyPressed(event);
     }
 
     @Override
-    public void close() { client.setScreen(parent); }
+    public void onClose() { minecraft.gui.setScreen(parent); }
 
     @Override
     public void removed() { ModrinthIconCache.clearCache(); super.removed(); }

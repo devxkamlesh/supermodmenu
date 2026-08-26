@@ -2,11 +2,12 @@ package com.supermodmenu.gui;
 
 import com.supermodmenu.dependency.DependencyGraph;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 
 import java.util.List;
 
@@ -27,7 +28,7 @@ public class DependencyGraphScreen extends Screen {
     private static final int LINE_H = 12;
 
     public DependencyGraphScreen(Screen parent, String rootModId, DependencyGraph graph) {
-        super(Text.literal("Dependencies: " + rootModId));
+        super(Component.literal("Dependencies: " + rootModId));
         this.parent    = parent;
         this.rootModId = rootModId;
         this.graph     = graph;
@@ -35,38 +36,46 @@ public class DependencyGraphScreen extends Screen {
 
     @Override
     protected void init() {
-        addDrawableChild(ButtonWidget.builder(Text.literal("← Back"),
-                btn -> client.setScreen(parent))
-                .dimensions(8, height - 28, 80, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("← Back"),
+            btn -> minecraft.gui.setScreen(parent))
+            .bounds(8, height - 28, 80, 20).build());
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        renderBackground(context, mouseX, mouseY, delta);
-        super.render(context, mouseX, mouseY, delta);
+    public void extractBackground(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
+    }
+
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
+        context.fill(0, 0, width, height, Theme.BG_APP);
+        context.fill(0, 0, width, 26, Theme.BG_HEADER);
+        context.fill(0, 0, 4, 26, Theme.BLUE);
+        Theme.divider(context, 0, 26, width);
+        Theme.panel(context, 10, 32, width - 20, height - 68, Theme.BG_PANEL, Theme.BORDER);
+        super.extractRenderState(context, mouseX, mouseY, delta);
 
         String modName = FabricLoader.getInstance()
                 .getModContainer(rootModId)
                 .map(m -> m.getMetadata().getName())
                 .orElse(rootModId);
 
-        context.drawCenteredTextWithShadow(textRenderer,
-                Text.literal("Dependency Tree: ").append(
-                        Text.literal(modName).formatted(Formatting.AQUA)),
-                width / 2, 8, 0xFFFFFF);
+        context.centeredText(font,
+            Component.literal("Dependency Tree: ").append(
+                Component.literal(modName).withStyle(ChatFormatting.AQUA)),
+                width / 2, 9, Theme.TEXT);
 
-        int x = 16;
-        int y = 28 - scrollOffset;
+            int x = 22;
+            int y = 42 - scrollOffset;
 
         // ── What this mod depends on ──────────────────────────────────────────
-        context.drawTextWithShadow(textRenderer,
-                Text.literal("▼ Depends on:").formatted(Formatting.YELLOW), x, y, 0xFFFFFF);
+        context.text(font,
+            Component.literal("▼ DEPENDS ON").withStyle(ChatFormatting.AQUA), x, y, Theme.TEXT, true);
         y += LINE_H + 2;
 
         List<DependencyGraph.Edge> deps = graph.getDependenciesOf(rootModId);
         if (deps.isEmpty()) {
-            context.drawTextWithShadow(textRenderer,
-                    Text.literal("  (none)").formatted(Formatting.DARK_GRAY), x, y, 0xFFFFFF);
+                context.text(font,
+                    Component.literal("  (none)").withStyle(ChatFormatting.DARK_GRAY), x, y, 0xFFFFFF, true);
             y += LINE_H;
         } else {
             for (DependencyGraph.Edge edge : deps) {
@@ -75,9 +84,9 @@ public class DependencyGraphScreen extends Screen {
                     label += " (recommended)";
                 }
                 boolean installed = FabricLoader.getInstance().isModLoaded(edge.to());
-                Formatting color = installed ? Formatting.GREEN : Formatting.RED;
-                context.drawTextWithShadow(textRenderer,
-                        Text.literal(label).formatted(color), x, y, 0xFFFFFF);
+                ChatFormatting color = installed ? ChatFormatting.GREEN : ChatFormatting.RED;
+                context.text(font,
+                    Component.literal(label).withStyle(color), x, y, 0xFFFFFF, true);
                 y += LINE_H;
             }
         }
@@ -85,24 +94,24 @@ public class DependencyGraphScreen extends Screen {
         y += 8;
 
         // ── What depends on this mod ──────────────────────────────────────────
-        context.drawTextWithShadow(textRenderer,
-                Text.literal("▲ Required by:").formatted(Formatting.YELLOW), x, y, 0xFFFFFF);
+        context.text(font,
+            Component.literal("▲ REQUIRED BY").withStyle(ChatFormatting.AQUA), x, y, Theme.TEXT, true);
         y += LINE_H + 2;
 
         List<String> dependents = graph.getDependentsOf(rootModId);
         if (dependents.isEmpty()) {
-            context.drawTextWithShadow(textRenderer,
-                    Text.literal("  (nothing depends on this mod)").formatted(Formatting.DARK_GRAY),
-                    x, y, 0xFFFFFF);
+                context.text(font,
+                    Component.literal("  (nothing depends on this mod)").withStyle(ChatFormatting.DARK_GRAY),
+                    x, y, 0xFFFFFF, true);
         } else {
             for (String dep : dependents) {
                 String depName = FabricLoader.getInstance()
                         .getModContainer(dep)
                         .map(m -> m.getMetadata().getName())
                         .orElse(dep);
-                context.drawTextWithShadow(textRenderer,
-                        Text.literal("  • " + depName).formatted(Formatting.LIGHT_PURPLE),
-                        x, y, 0xFFFFFF);
+                context.text(font,
+                    Component.literal("  • " + depName).withStyle(ChatFormatting.LIGHT_PURPLE),
+                    x, y, 0xFFFFFF, true);
                 y += LINE_H;
             }
         }
@@ -115,8 +124,8 @@ public class DependencyGraphScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == 256) { client.setScreen(parent); return true; }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+    public boolean keyPressed(KeyEvent event) {
+        if (event.key() == 256) { minecraft.gui.setScreen(parent); return true; }
+        return super.keyPressed(event);
     }
 }
