@@ -21,7 +21,7 @@ if %ERRORLEVEL% EQU 0 (
     echo ========================================
     echo Build SUCCESS!
     echo ========================================
-    echo JAR location: build\libs\supermodmenu-1.2.0.jar
+    echo JAR location: build\libs\supermodmenu-1.3.0.jar
     echo.
     echo This version works with Minecraft 26.2 and Fabric Loader 0.19.3+
 ) else (

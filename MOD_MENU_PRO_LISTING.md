@@ -77,31 +77,29 @@ Mod Menu Pro connects to Modrinth to search for projects, retrieve descriptions 
 
 | Field | Value |
 |---|---|
-| Version number | `1.2.0` |
-| Version title | `Mod Menu Pro 1.2.0 — Minecraft 26.2 Upgrade` |
+| Version number | `1.3.0` |
+| Version title | `Mod Menu Pro 1.3.0 — UI Refresh` |
 | Release channel | Release |
 | Game version | Minecraft 26.2 |
 | Loader | Fabric |
 | Required dependency | Fabric API |
 | Optional dependency | Mod Menu |
 | Java version | Java 25 |
-| File | `supermodmenu-1.2.0.jar` |
+| File | `supermodmenu-1.3.0.jar` |
 
 ## Version description / changelog
 
-# Mod Menu Pro 1.2.0
+# Mod Menu Pro 1.3.0
 
-This release introduces the **Mod Menu Pro** name and fully upgrades the mod to Minecraft 26.2 while retaining every existing feature and existing user data.
+This release refreshes the **Mod Menu Pro** interface for Minecraft 26.2 while retaining every existing feature and existing user data.
 
 ### Changes
 
-- Renamed the user-facing mod from **Super Mod Menu** to **Mod Menu Pro**.
-- Fully migrated the interface to Minecraft 26.2's unobfuscated GUI, rendering, input, and texture APIs.
-- Updated to Fabric Loader 0.19.3 and Fabric API 0.158.0+26.2.
-- Updated the build system to Fabric Loom 1.17, Gradle 9.5.1, and Java 25.
+- Redesigned the interface with cleaner panels, improved spacing, clearer selections, and modern emerald accents.
+- Refreshed the Modrinth browser and secondary screens for a consistent appearance.
 - Preserved search, filters, favorites, personal notes, dependency views, update checking, Modrinth browsing, mod installation, icons, links, and config integration.
 - Preserved the internal mod ID and config location so existing favorites and notes continue to work.
-- Restricted compatibility metadata to Minecraft 26.2 instead of using an unsafe wildcard.
+- Retained full compatibility with Minecraft 26.2, Fabric Loader 0.19.3+, Fabric API, and Java 25.
 
 ## Image files
 

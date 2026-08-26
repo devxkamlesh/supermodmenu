@@ -33,7 +33,7 @@ Requires Java 25 (Gradle wrapper included).
 ./gradlew clean build
 ```
 
-Output JAR: `build/libs/supermodmenu-1.2.0.jar`.
+Output JAR: `build/libs/supermodmenu-1.3.0.jar`.
 
 ## Installing
 

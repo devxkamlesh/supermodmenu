@@ -1,18 +1,15 @@
-# Mod Menu Pro 1.2.0 — Minecraft 26.2
+# Mod Menu Pro 1.3.0 — Minecraft 26.2
 
-Mod Menu Pro is now fully upgraded for Minecraft 26.2. This release preserves all existing features and user data while modernizing the interface and underlying APIs.
+This update refreshes Mod Menu Pro with a cleaner interface while preserving every existing feature and existing user data.
 
 ## Changes
 
-- Renamed the user-facing mod from **Super Mod Menu** to **Mod Menu Pro**.
-- Added full compatibility with **Minecraft 26.2**.
-- Redesigned the interface with cleaner panels, improved spacing, clearer selections, and modern emerald accents.
-- Migrated rendering, screens, input handling, lists, and textures to the Minecraft 26.2 API.
-- Updated to **Fabric Loader 0.19.3** and **Fabric API 0.158.0+26.2**.
-- Updated the build system to **Fabric Loom 1.17**, **Gradle 9.5.1**, and **Java 25**.
-- Preserved mod search, filters, favorites, personal notes, dependency views, update checking, Modrinth browsing, mod installation, icons, links, and configuration integration.
-- Preserved the internal mod ID and configuration location, keeping existing favorites and notes compatible.
-- Restricted compatibility metadata to Minecraft 26.2 for safer installation.
+- Redesigned the interface with improved spacing, clearer visual hierarchy, refined cards, and modern emerald accents.
+- Improved selected, hover, status, header, footer, and detail-panel styling.
+- Refreshed the Modrinth browser and secondary screens to match the new design.
+- Preserved search, filters, favorites, notes, dependency views, update checks, Modrinth browsing, installation, links, icons, and configuration integration.
+- Retained full **Minecraft 26.2**, **Fabric Loader 0.19.3+**, **Fabric API**, and **Java 25** compatibility.
+- Preserved the internal mod ID and configuration location so existing favorites and notes continue to work.
 
 ## Requirements
 
@@ -21,4 +18,4 @@ Mod Menu Pro is now fully upgraded for Minecraft 26.2. This release preserves al
 - Fabric API
 - Java 25
 
-Existing users can replace the previous JAR with `supermodmenu-1.2.0.jar`. Restart Minecraft after installation.
+Replace the previous JAR with `supermodmenu-1.3.0.jar`, then restart Minecraft.
