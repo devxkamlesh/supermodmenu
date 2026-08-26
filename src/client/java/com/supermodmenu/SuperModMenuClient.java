@@ -23,8 +23,8 @@ public class SuperModMenuClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        LOGGER.info("Super Mod Menu initializing...");
+        LOGGER.info("Mod Menu Pro initializing...");
         ModDataManager.init();
-        LOGGER.info("Super Mod Menu ready.");
+        LOGGER.info("Mod Menu Pro ready.");
     }
 }

@@ -1,6 +1,6 @@
-# ✦ Super Mod Menu
+# ✦ Mod Menu Pro
 
-A focused, modern mod menu for Fabric (Minecraft 1.21.4). It does a few things that the
+A focused, modern mod menu for Fabric (Minecraft 26.2). It does a few things that the
 default Mod Menu doesn't — and tries to do them well, without clutter.
 
 ## Features
@@ -19,15 +19,21 @@ default Mod Menu doesn't — and tries to do them well, without clutter.
 The list shows only top-level, user-installed mods. Bundled libraries and nested
 (jar-in-jar) modules are hidden automatically.
 
+## Compatibility
+
+- **Minecraft**: 26.2
+- **Fabric Loader**: 0.19.3+
+- **Fabric API**: Required
+
 ## Building
 
-Requires Java 21 (wrapper included).
+Requires Java 25 (Gradle wrapper included).
 
 ```bash
 ./gradlew clean build
 ```
 
-Output JAR: `build/libs/supermodmenu-1.0.0.jar`.
+Output JAR: `build/libs/supermodmenu-1.3.0.jar`.
 
 ## Installing
 

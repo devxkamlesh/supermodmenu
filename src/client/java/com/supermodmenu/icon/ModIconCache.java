@@ -4,10 +4,9 @@ import com.supermodmenu.SuperModMenuClient;
 import com.supermodmenu.update.ModrinthUpdateChecker;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.texture.NativeImage;
-import net.minecraft.client.texture.NativeImageBackedTexture;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.Minecraft;
+import com.mojang.blaze3d.platform.NativeImage;
+import net.minecraft.resources.Identifier;
 
 import java.io.InputStream;
 import java.net.URI;
@@ -98,45 +97,37 @@ public class ModIconCache {
         try {
             Optional<ModContainer> modOpt = FabricLoader.getInstance().getModContainer(modId);
             if (modOpt.isEmpty()) return null;
-
             ModContainer mod = modOpt.get();
-            String iconPath = mod.getMetadata().getIconPath(32).orElse(null);
-            
-            if (iconPath == null) {
-                // Try common icon paths
-                iconPath = "assets/" + modId + "/icon.png";
-            }
 
-            // Load from mod's resources
-            InputStream iconStream = mod.getClass().getClassLoader().getResourceAsStream(iconPath);
-            if (iconStream == null) {
-                // Try alternative: load from mod JAR path directly
-                Path modPath = mod.getRootPaths().get(0);
-                Path iconFile = modPath.resolve(iconPath);
-                
-                if (Files.exists(iconFile)) {
-                    iconStream = Files.newInputStream(iconFile);
+            // Resolve the declared icon path (fall back to the conventional location).
+            String iconPath = mod.getMetadata().getIconPath(64)
+                    .or(() -> mod.getMetadata().getIconPath(32))
+                    .orElse("assets/" + modId + "/icon.png");
+
+            // findPath() is the reliable Fabric API for reading a file inside a mod jar.
+            Optional<Path> pathOpt = mod.findPath(iconPath);
+            if (pathOpt.isEmpty() || !Files.exists(pathOpt.get())) return null;
+
+            // Read pixels off-thread; create + register the GPU texture on the render
+            // thread (required on 1.21.5+, where texture creation uploads to the GPU).
+            final NativeImage image;
+            try (InputStream is = Files.newInputStream(pathOpt.get())) {
+                image = NativeImage.read(is);
+            }
+            Identifier id = Identifier.fromNamespaceAndPath("supermodmenu", "icons/" + modId.replace(":", "_"));
+            Minecraft.getInstance().execute(() -> {
+                try {
+                        Minecraft.getInstance().getTextureManager()
+                            .register(id, TextureCompat.create(image));
+                } catch (Throwable t) {
+                    SuperModMenuClient.LOGGER.debug("Icon texture failed for {}: {}", modId, t.toString());
+                    image.close();
                 }
-            }
-
-            if (iconStream != null) {
-                try (InputStream is = iconStream) {
-                    NativeImage image = NativeImage.read(is);
-                    NativeImageBackedTexture texture = TextureCompat.create(image);
-
-                    Identifier id = Identifier.of("supermodmenu", "icons/" + modId.replace(":", "_"));
-                    MinecraftClient.getInstance().execute(() ->
-                            MinecraftClient.getInstance().getTextureManager().registerTexture(id, texture)
-                    );
-
-                    SuperModMenuClient.LOGGER.debug("Loaded icon from JAR for: {}", modId);
-                    return id;
-                }
-            }
+            });
+            return id;
         } catch (Exception e) {
             SuperModMenuClient.LOGGER.debug("Could not load icon from JAR for {}: {}", modId, e.getMessage());
         }
-
         return null;
     }
 
@@ -188,17 +179,18 @@ public class ModIconCache {
             HttpResponse<InputStream> imgResp = HTTP.send(imgReq, HttpResponse.BodyHandlers.ofInputStream());
             if (imgResp.statusCode() != 200) return null;
 
-            // Step 4: load as NativeImage
+            // Step 4: load as NativeImage (off-thread), register on the render thread
             try (InputStream is = imgResp.body()) {
-                NativeImage image = NativeImage.read(is);
-                NativeImageBackedTexture texture = TextureCompat.create(image);
-
-                // Register with Minecraft's texture manager
-                Identifier id = Identifier.of("supermodmenu", "icons/" + modId.replace(":", "_") + "_mr");
-                MinecraftClient.getInstance().execute(() ->
-                        MinecraftClient.getInstance().getTextureManager().registerTexture(id, texture)
-                );
-
+                final NativeImage image = NativeImage.read(is);
+                Identifier id = Identifier.fromNamespaceAndPath("supermodmenu", "icons/" + modId.replace(":", "_") + "_mr");
+                Minecraft.getInstance().execute(() -> {
+                    try {
+                        Minecraft.getInstance().getTextureManager()
+                            .register(id, TextureCompat.create(image));
+                    } catch (Throwable t) {
+                        image.close();
+                    }
+                });
                 SuperModMenuClient.LOGGER.debug("Loaded icon from Modrinth for: {}", modId);
                 return id;
             }

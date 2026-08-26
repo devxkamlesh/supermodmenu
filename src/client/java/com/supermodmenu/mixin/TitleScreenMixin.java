@@ -2,9 +2,10 @@ package com.supermodmenu.mixin;
 
 import com.supermodmenu.gui.ModListScreen;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.gui.screen.TitleScreen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -14,10 +15,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * Injects a "Mods (N)" button into the main title screen.
  */
 @Mixin(TitleScreen.class)
-public abstract class TitleScreenMixin extends net.minecraft.client.gui.screen.Screen {
+public abstract class TitleScreenMixin extends Screen {
 
     protected TitleScreenMixin() {
-        super(Text.empty());
+        super(Component.empty());
     }
 
     @Inject(method = "init", at = @At("TAIL"))
@@ -37,10 +38,10 @@ public abstract class TitleScreenMixin extends net.minecraft.client.gui.screen.S
         int btnX = this.width - btnW - 8;
         int btnY = this.height - btnH - 8;
 
-        this.addDrawableChild(ButtonWidget.builder(
-                Text.literal("✦ Mods (" + modCount + ")"),
-                btn -> this.client.setScreen(new ModListScreen(this)))
-                .dimensions(btnX, btnY, btnW, btnH)
+        this.addRenderableWidget(Button.builder(
+            Component.literal("✦ Mods (" + modCount + ")"),
+            btn -> this.minecraft.gui.setScreen(new ModListScreen(this)))
+            .bounds(btnX, btnY, btnW, btnH)
                 .build());
     }
 }
